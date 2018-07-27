@@ -7,36 +7,9 @@ using System.Threading.Tasks;
 
 namespace Dnc.Api.Restriction
 {
-    public class ApiRestrictionActionFilter : IActionFilter, IAsyncActionFilter, IPageFilter
+    public class ApiRestrictionActionFilter : IAsyncActionFilter, IAsyncPageFilter
     {
         private IEnumerable<ApiRestrictionAttribute> _attrs;
-
-        public void OnActionExecuted(ActionExecutedContext context)
-        {
-        }
-
-        public void OnActionExecuting(ActionExecutingContext context)
-        {
-            var attrs = GetAttrs(context);
-
-        }
-
-        public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-        {
-            return Task.CompletedTask;
-        }
-
-        public void OnPageHandlerExecuted(PageHandlerExecutedContext context)
-        {
-        }
-
-        public void OnPageHandlerExecuting(PageHandlerExecutingContext context)
-        {
-        }
-
-        public void OnPageHandlerSelected(PageHandlerSelectedContext context)
-        {
-        }
 
         private IEnumerable<ApiRestrictionAttribute> GetAttrs(FilterContext context)
         {
@@ -59,6 +32,22 @@ namespace Dnc.Api.Restriction
         {
             var ip = context.HttpContext.GetUserIp();
 
+            
+        }
+
+        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        {
+            await next();
+        }
+
+        public async Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context)
+        {
+            await Task.CompletedTask;
+        }
+
+        public async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
+        {
+            await next();
         }
     }
 }
