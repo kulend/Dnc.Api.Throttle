@@ -9,7 +9,7 @@ using StackExchange.Redis;
 
 namespace Dnc.Api.Restriction.Redis
 {
-    internal class RedisCacheProvider
+    public class RedisCacheProvider
     {
         /// <summary>
         /// The cache.
@@ -123,6 +123,16 @@ namespace Dnc.Api.Restriction.Redis
                 prefix = string.Concat(prefix, "*");
 
             return prefix;
+        }
+
+        public async Task<bool> SortedSetAddAsync(string key, string value, double score)
+        {
+            return await _cache.SortedSetAddAsync(key, value, score);
+        }
+
+        public async Task<long> SortedSetLengthAsync(string key, double min, double max)
+        {
+            return await _cache.SortedSetLengthAsync(key, min, max);
         }
     }
 }
