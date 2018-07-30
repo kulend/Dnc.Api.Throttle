@@ -13,20 +13,16 @@ namespace Dnc.Api.Restriction.Redis
         /// <summary>
         /// The options.
         /// </summary>
-        private readonly RedisOptions _options;
+        private readonly string _connectionString;
 
         /// <summary>
         /// The connection multiplexer.
         /// </summary>
         private readonly Lazy<ConnectionMultiplexer> _connectionMultiplexer;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="T:EasyCaching.Redis.RedisDatabaseProvider"/> class.
-        /// </summary>
-        /// <param name="options">Options.</param>
-        public RedisDatabaseProvider(IOptions<RedisOptions> options)
+        public RedisDatabaseProvider(IOptions<ApiRestrictionOption> options)
         {
-            _options = options.Value;
+            _connectionString = options.Value?.RedisConnectionString;
             _connectionMultiplexer = new Lazy<ConnectionMultiplexer>(CreateConnectionMultiplexer);
         }
 
@@ -35,7 +31,7 @@ namespace Dnc.Api.Restriction.Redis
         /// </summary>
         public IDatabase GetDatabase()
         {
-            return _connectionMultiplexer.Value.GetDatabase(_options.Database);
+            return _connectionMultiplexer.Value.GetDatabase();
         }
 
         /// <summary>
@@ -58,21 +54,7 @@ namespace Dnc.Api.Restriction.Redis
         /// <returns>The connection multiplexer.</returns>
         private ConnectionMultiplexer CreateConnectionMultiplexer()
         {
-            var configurationOptions = new ConfigurationOptions
-            {
-                ConnectTimeout = _options.ConnectionTimeout,
-                Password = _options.Password,
-                Ssl = _options.IsSsl,
-                SslHost = _options.SslHost,
-                AllowAdmin = _options.AllowAdmin
-            };
-
-            foreach (var endpoint in _options.Endpoints)
-            {
-                configurationOptions.EndPoints.Add(endpoint.Host, endpoint.Port);
-            }
-
-            return ConnectionMultiplexer.Connect(configurationOptions.ToString());
+            return ConnectionMultiplexer.Connect(_connectionString);
         }
 
         /// <summary>
@@ -104,7 +86,7 @@ namespace Dnc.Api.Restriction.Redis
         }
     }
 
-    internal interface IRedisDatabaseProvider
+    public interface IRedisDatabaseProvider
     {
         IDatabase GetDatabase();
 

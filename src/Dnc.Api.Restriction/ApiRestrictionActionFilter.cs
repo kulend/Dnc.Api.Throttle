@@ -1,85 +1,162 @@
 ﻿using Dnc.Api.Restriction.Extensions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System;
-using System.Reflection;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Numerics;
+using System.Reflection;
 using System.Threading.Tasks;
-using Dnc.Api.Restriction.Redis;
 
 namespace Dnc.Api.Restriction
 {
     public class ApiRestrictionActionFilter : IAsyncActionFilter, IAsyncPageFilter
     {
-        private readonly RedisCacheProvider _redis;
+        private readonly ICacheProvider _cache;
 
-        public ApiRestrictionActionFilter(RedisCacheProvider redis)
+        public ApiRestrictionActionFilter(ICacheProvider cache)
         {
-            this._redis = redis;
+            _cache = cache;
         }
 
         private IEnumerable<ApiRestrictionAttribute> _attrs;
+        private string _actionName;
+        private string _ip;
+        private string _keyPrefix;
 
-        private IEnumerable<ApiRestrictionAttribute> GetAttrs(FilterContext context)
+        /// <summary>
+        /// 处理接口过载
+        /// </summary>
+        /// <returns></returns>
+        private async Task<bool> HandleAsync(FilterContext context)
         {
-            if (_attrs != null)
-            {
-                return _attrs;
-            }
+            //处理数据
+            GetData(context);
 
-            var method = context.GetHandlerMethod();
-            if (method == null)
+            //检查是否过载
+            var isOverload =  await CheckAsync();
+            if (isOverload)
             {
-                return new ApiRestrictionAttribute[] { };
+                return false;
             }
-
-            _attrs = method.GetCustomAttributes<ApiRestrictionAttribute>(true);
-            return _attrs;
+            else
+            {
+                //未过载
+                //保存记录到Redis
+                await SaveAsync();
+                return true;
+            }
         }
 
-        private async Task aasas(IEnumerable<ApiRestrictionAttribute> attrs, FilterContext context)
+        private void GetData(FilterContext context)
         {
-            var ip = IpToLong(context.HttpContext.GetUserIp());
-            double now = DateTime.Now.Ticks;
-            double min = DateTime.Now.AddMinutes(-5).Ticks;
-            var keyPrefix = "ar:" + "aaaaa" + ":";
-            foreach (var attr in attrs)
+            var method = context.GetHandlerMethod();
+
+            _actionName = method.DeclaringType.FullName + "." + method.Name;
+
+            _attrs = method.GetCustomAttributes<ApiRestrictionAttribute>(true);
+
+            _ip = IpToNum(context.HttpContext.GetUserIp());
+
+            _keyPrefix = "ar:" + _actionName + ":";
+        }
+
+        /// <summary>
+        /// 检查是否过载
+        /// </summary>
+        /// <returns></returns>
+        private async Task<bool> CheckAsync()
+        {
+            DateTime nowTime = DateTime.Now;
+
+            //循环验证是否过载
+            foreach (var attr in _attrs)
             {
-                var key = keyPrefix;
-                if (attr.RecognitionMethod == RecognitionMethod.Ip)
+                string key = "";
+                switch (attr.BasisCondition)
                 {
-                    key += "ip:" + ip;
+                    case BasisCondition.Ip:
+                        key = _keyPrefix + "ip:" + _ip;
+                        break;
+                    default:
+                        break;
                 }
 
                 //从Redis sorted set里面取得当前接口的历史数据
-                long count = await _redis.SortedSetLengthAsync(key, min, now);
-
-
-                //保存记录
-                await _redis.SortedSetAddAsync(key, string.Empty, now);
+                long count = await _cache.SortedSetLengthAsync(key, nowTime.Ticks - attr.Duration.Ticks, nowTime.Ticks);
+                if (count >= attr.Limit)
+                {
+                    return true;
+                }
             }
 
-
-
-
-
-
-
-
+            return false;
         }
 
-        private static long IpToLong(string ip)
+        /// <summary>
+        /// 保持记录到redis
+        /// </summary>
+        /// <returns></returns>
+        private async Task SaveAsync()
         {
-            char[] separator = new char[] { '.' };
-            string[] items = ip.Split(separator);
-            return long.Parse(items[0]) << 24
-                    | long.Parse(items[1]) << 16
-                    | long.Parse(items[2]) << 8
-                    | long.Parse(items[3]);
+            DateTime nowTime = DateTime.Now;
+
+            //循环验证是否过载
+            foreach (var attr in _attrs)
+            {
+                string key = "";
+                switch (attr.BasisCondition)
+                {
+                    case BasisCondition.Ip:
+                        key = _keyPrefix + "ip:" + _ip;
+                        break;
+                    default:
+                        break;
+                }
+
+                //保存记录
+                await _cache.SortedSetAddAsync(key, nowTime.Ticks.ToString(), nowTime.Ticks);
+
+                //设置过期时间
+                await _cache.KeyExpireAsync(key, attr.Duration.Add(TimeSpan.FromMinutes(1)));
+            }
+        }
+
+        private static string IpToNum(string ip)
+        {
+            if (ip.Contains("."))
+            {
+                //IPv4
+                char[] separator = new char[] { '.' };
+                string[] items = ip.Split(separator);
+                return (long.Parse(items[0]) << 24
+                        | long.Parse(items[1]) << 16
+                        | long.Parse(items[2]) << 8
+                        | long.Parse(items[3])).ToString();
+            }
+            else
+            {
+                //IPv6
+                IPAddress ipAddr = IPAddress.Parse(ip);
+                List<Byte> ipFormat = ipAddr.GetAddressBytes().ToList();
+                ipFormat.Reverse();
+                ipFormat.Add(0);
+                BigInteger ipAsInt = new BigInteger(ipFormat.ToArray());
+                return ipAsInt.ToString();
+            }
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            await next();
+            var result = await HandleAsync(context);
+            if (result)
+            {
+                await next();
+            }
+            else
+            {
+                context.Result = new ApiRestrictionResult { Content = "访问过于频繁，请稍后重试"};
+            }
         }
 
         public async Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context)
@@ -89,7 +166,15 @@ namespace Dnc.Api.Restriction
 
         public async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
         {
-            await next();
+            var result = await HandleAsync(context);
+            if (result)
+            {
+                await next();
+            }
+            else
+            {
+                context.Result = new ApiRestrictionResult { Content = "访问过于频繁，请稍后重试" };
+            }
         }
     }
 }

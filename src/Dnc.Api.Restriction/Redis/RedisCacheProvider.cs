@@ -9,7 +9,7 @@ using StackExchange.Redis;
 
 namespace Dnc.Api.Restriction.Redis
 {
-    public class RedisCacheProvider
+    internal class RedisCacheProvider : ICacheProvider
     {
         /// <summary>
         /// The cache.
@@ -26,16 +26,9 @@ namespace Dnc.Api.Restriction.Redis
         /// </summary>
         private readonly IEnumerable<IServer> _servers;
 
-        /// <summary>
-        /// The options.
-        /// </summary>
-        private readonly RedisOptions _options;
-
-        public RedisCacheProvider(IRedisDatabaseProvider dbProvider, 
-            IOptions<RedisOptions> options)
+        public RedisCacheProvider(IRedisDatabaseProvider dbProvider)
         {
             _dbProvider = dbProvider;
-            _options = options.Value;
             _cache = _dbProvider.GetDatabase();
             _servers = _dbProvider.GetServerList();
         }
@@ -133,6 +126,11 @@ namespace Dnc.Api.Restriction.Redis
         public async Task<long> SortedSetLengthAsync(string key, double min, double max)
         {
             return await _cache.SortedSetLengthAsync(key, min, max);
+        }
+
+        public async Task<bool> KeyExpireAsync(string key, TimeSpan? expiry)
+        {
+            return await _cache.KeyExpireAsync(key, expiry);
         }
     }
 }
