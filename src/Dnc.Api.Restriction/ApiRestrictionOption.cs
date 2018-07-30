@@ -9,9 +9,10 @@ namespace Dnc.Api.Restriction
 {
     public class ApiRestrictionOption
     {
-        public Func<HttpContext, string> OnUserIdentity;
+        public Func<HttpContext, string> OnUserIdentity = context => "";
 
         public string RedisConnectionString { set; get; }
 
+        public string RedisKeyPrefix { set; get; } = "ApiRestriction";
     }
 }

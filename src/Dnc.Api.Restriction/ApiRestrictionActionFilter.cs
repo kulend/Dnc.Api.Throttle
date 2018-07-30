@@ -1,5 +1,6 @@
 ﻿using Dnc.Api.Restriction.Extensions;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,16 +14,19 @@ namespace Dnc.Api.Restriction
     public class ApiRestrictionActionFilter : IAsyncActionFilter, IAsyncPageFilter
     {
         private readonly ICacheProvider _cache;
+        private readonly ApiRestrictionOption _options;
 
-        public ApiRestrictionActionFilter(ICacheProvider cache)
+        public ApiRestrictionActionFilter(ICacheProvider cache, IOptions<ApiRestrictionOption> options)
         {
             _cache = cache;
+            _options = options.Value;
         }
 
         private IEnumerable<ApiRestrictionAttribute> _attrs;
         private string _actionName;
         private string _ip;
         private string _keyPrefix;
+        private string _userIdentity;
 
         /// <summary>
         /// 处理接口过载
@@ -34,7 +38,7 @@ namespace Dnc.Api.Restriction
             GetData(context);
 
             //检查是否过载
-            var isOverload =  await CheckAsync();
+            var isOverload =  await CheckAsync(context);
             if (isOverload)
             {
                 return false;
@@ -58,14 +62,14 @@ namespace Dnc.Api.Restriction
 
             _ip = IpToNum(context.HttpContext.GetUserIp());
 
-            _keyPrefix = "ar:" + _actionName + ":";
+            _keyPrefix = $"{_options.RedisKeyPrefix}:{_actionName}:";
         }
 
         /// <summary>
         /// 检查是否过载
         /// </summary>
         /// <returns></returns>
-        private async Task<bool> CheckAsync()
+        private async Task<bool> CheckAsync(FilterContext context)
         {
             DateTime nowTime = DateTime.Now;
 
@@ -77,6 +81,10 @@ namespace Dnc.Api.Restriction
                 {
                     case BasisCondition.Ip:
                         key = _keyPrefix + "ip:" + _ip;
+                        break;
+                    case BasisCondition.UserIdentity:
+                        _userIdentity = _options.OnUserIdentity(context.HttpContext);
+                        key = _keyPrefix + "user:" + _userIdentity;
                         break;
                     default:
                         break;
@@ -101,7 +109,7 @@ namespace Dnc.Api.Restriction
         {
             DateTime nowTime = DateTime.Now;
 
-            //循环验证是否过载
+            //循环保存记录
             foreach (var attr in _attrs)
             {
                 string key = "";
@@ -109,6 +117,9 @@ namespace Dnc.Api.Restriction
                 {
                     case BasisCondition.Ip:
                         key = _keyPrefix + "ip:" + _ip;
+                        break;
+                    case BasisCondition.UserIdentity:
+                        key = _keyPrefix + "user:" + _userIdentity;
                         break;
                     default:
                         break;
