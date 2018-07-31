@@ -12,5 +12,7 @@ namespace Dnc.Api.Throttle
         Task<long> SortedSetLengthAsync(string key, double min, double max);
 
         Task<bool> KeyExpireAsync(string key, TimeSpan? expiry);
+
+        Task<long> SetAddAsync(string key, params string[] values);
     }
 }

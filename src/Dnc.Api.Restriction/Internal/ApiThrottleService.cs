@@ -18,6 +18,7 @@ namespace Dnc.Api.Throttle.Internal
 
         public Task AddIpBlackListAsync(TimeSpan? expiry, params string[] ip)
         {
+            _cache.SetAddAsync($"{_options.RedisKeyPrefix}:blackList:ip", ip);
             return Task.CompletedTask;
         }
     }
