@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 
-namespace Dnc.Api.Restriction.Redis
+namespace Dnc.Api.Throttle.Redis
 {
     internal class RedisDatabaseProvider : IRedisDatabaseProvider
     {
@@ -20,7 +20,7 @@ namespace Dnc.Api.Restriction.Redis
         /// </summary>
         private readonly Lazy<ConnectionMultiplexer> _connectionMultiplexer;
 
-        public RedisDatabaseProvider(IOptions<ApiRestrictionOption> options)
+        public RedisDatabaseProvider(IOptions<ApiThrottleOption> options)
         {
             _connectionString = options.Value?.RedisConnectionString;
             _connectionMultiplexer = new Lazy<ConnectionMultiplexer>(CreateConnectionMultiplexer);

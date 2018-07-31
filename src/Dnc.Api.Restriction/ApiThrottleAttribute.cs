@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Dnc.Api.Restriction
+namespace Dnc.Api.Throttle
 {
     /// <summary>
     /// 接口管制Attribute
     /// </summary>
-    public class ApiRestrictionAttribute : Attribute
+    public class ApiThrottleAttribute : Attribute
     {
         /// <summary>
         /// 限制次数
@@ -15,9 +15,9 @@ namespace Dnc.Api.Restriction
         public int Limit { set; get; } = 1;
 
         /// <summary>
-        /// 计时间隔
+        /// 计时间隔(单位：秒)
         /// </summary>
-        public TimeSpan Duration { set; get; } = TimeSpan.FromMinutes(1);
+        public int Duration { set; get; } = 60;
 
         /// <summary>
         /// 依据条件

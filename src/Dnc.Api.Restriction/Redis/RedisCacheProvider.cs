@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
-namespace Dnc.Api.Restriction.Redis
+namespace Dnc.Api.Throttle.Redis
 {
     internal class RedisCacheProvider : ICacheProvider
     {
@@ -131,6 +131,21 @@ namespace Dnc.Api.Restriction.Redis
         public async Task<bool> KeyExpireAsync(string key, TimeSpan? expiry)
         {
             return await _cache.KeyExpireAsync(key, expiry);
+        }
+
+        public async Task<long> SetAddAsync(string key, params string[] values)
+        {
+            if (values == null || values.Length == 0)
+            {
+                return 0;
+            }
+
+            RedisValue[] redisValues = new RedisValue[values.Length];
+            for (int i = 0; i < values.Length; i++)
+            {
+                redisValues[i] = values[i];
+            }
+            return await _cache.SetAddAsync(key, redisValues);
         }
     }
 }

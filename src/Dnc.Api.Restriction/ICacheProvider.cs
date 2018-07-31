@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Dnc.Api.Restriction
+namespace Dnc.Api.Throttle
 {
     public interface ICacheProvider
     {

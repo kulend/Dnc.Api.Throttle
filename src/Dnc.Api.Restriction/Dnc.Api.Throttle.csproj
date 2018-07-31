@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RootNamespace>Dnc.Api.Throttle</RootNamespace>
+    <AssemblyName>Dnc.Api.Throttle</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

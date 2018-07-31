@@ -1,4 +1,4 @@
-﻿using Dnc.Api.Restriction.Extensions;
+﻿using Dnc.Api.Throttle.Extensions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using System;
@@ -9,20 +9,20 @@ using System.Numerics;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Dnc.Api.Restriction
+namespace Dnc.Api.Throttle
 {
-    public class ApiRestrictionActionFilter : IAsyncActionFilter, IAsyncPageFilter
+    public class ApiThrottleActionFilter : IAsyncActionFilter, IAsyncPageFilter
     {
         private readonly ICacheProvider _cache;
-        private readonly ApiRestrictionOption _options;
+        private readonly ApiThrottleOption _options;
 
-        public ApiRestrictionActionFilter(ICacheProvider cache, IOptions<ApiRestrictionOption> options)
+        public ApiThrottleActionFilter(ICacheProvider cache, IOptions<ApiThrottleOption> options)
         {
             _cache = cache;
             _options = options.Value;
         }
 
-        private IEnumerable<ApiRestrictionAttribute> _attrs;
+        private IEnumerable<ApiThrottleAttribute> _attrs;
         private string _actionName;
         private string _ip;
         private string _keyPrefix;
@@ -58,7 +58,7 @@ namespace Dnc.Api.Restriction
 
             _actionName = method.DeclaringType.FullName + "." + method.Name;
 
-            _attrs = method.GetCustomAttributes<ApiRestrictionAttribute>(true);
+            _attrs = method.GetCustomAttributes<ApiThrottleAttribute>(true);
 
             _ip = IpToNum(context.HttpContext.GetUserIp());
 
@@ -91,7 +91,7 @@ namespace Dnc.Api.Restriction
                 }
 
                 //从Redis sorted set里面取得当前接口的历史数据
-                long count = await _cache.SortedSetLengthAsync(key, nowTime.Ticks - attr.Duration.Ticks, nowTime.Ticks);
+                long count = await _cache.SortedSetLengthAsync(key, nowTime.Ticks - TimeSpan.FromSeconds(attr.Duration).Ticks, nowTime.Ticks);
                 if (count >= attr.Limit)
                 {
                     return true;
@@ -129,7 +129,7 @@ namespace Dnc.Api.Restriction
                 await _cache.SortedSetAddAsync(key, nowTime.Ticks.ToString(), nowTime.Ticks);
 
                 //设置过期时间
-                await _cache.KeyExpireAsync(key, attr.Duration.Add(TimeSpan.FromMinutes(1)));
+                await _cache.KeyExpireAsync(key, TimeSpan.FromSeconds(attr.Duration + 60));
             }
         }
 
@@ -166,7 +166,7 @@ namespace Dnc.Api.Restriction
             }
             else
             {
-                context.Result = new ApiRestrictionResult { Content = "访问过于频繁，请稍后重试"};
+                context.Result = new ApiThrottleResult { Content = "访问过于频繁，请稍后重试"};
             }
         }
 
@@ -184,7 +184,7 @@ namespace Dnc.Api.Restriction
             }
             else
             {
-                context.Result = new ApiRestrictionResult { Content = "访问过于频繁，请稍后重试" };
+                context.Result = new ApiThrottleResult { Content = "访问过于频繁，请稍后重试" };
             }
         }
     }

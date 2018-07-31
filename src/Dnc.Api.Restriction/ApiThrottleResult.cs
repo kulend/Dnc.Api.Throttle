@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Dnc.Api.Restriction
+namespace Dnc.Api.Throttle
 {
-    public class ApiRestrictionResult : ContentResult
+    public class ApiThrottleResult : ContentResult
     {
     }
 }

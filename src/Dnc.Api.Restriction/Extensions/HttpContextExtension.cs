@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Dnc.Api.Restriction.Extensions
+namespace Dnc.Api.Throttle.Extensions
 {
     public static class HttpContextExtension
     {

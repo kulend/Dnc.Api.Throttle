@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 
-namespace Dnc.Api.Restriction.Extensions
+namespace Dnc.Api.Throttle.Extensions
 {
     internal static class FilterContextExtension
     {
