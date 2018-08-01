@@ -7,31 +7,34 @@ namespace Dnc.Api.Throttle
 {
     public interface IStorageProvider
     {
+        #region 黑名单 & 白名单
+
         /// <summary>
-        /// 保存Ip黑名单
+        /// 保存黑名单
         /// </summary>
+        /// <param name="policy">策略</param>
         /// <param name="expiry">过期时间</param>
-        /// <param name="ip">IP地址</param>
-        Task SaveIpBlackListAsync(TimeSpan? expiry, params string[] ip);
+        /// <param name="item">项目</param>
+        Task SaveBlackListAsync(Policy policy, TimeSpan? expiry, params string[] item);
 
         /// <summary>
-        /// 删除IP黑名单中数据
+        /// 保存白名单
         /// </summary>
-        /// <param name="ip">IP地址</param>
-        Task RemoveIpBlackListAsync(params string[] ip);
-
-        /// <summary>
-        /// 保存Ip白名单
-        /// </summary>
+        /// <param name="policy">策略</param>
         /// <param name="expiry">过期时间</param>
-        /// <param name="ip">IP地址</param>
-        /// <remarks>因为要保存过期时间，所以ip名单通过Redis 有序集合(sorted set)来存储，score来存储过期时间Ticks</remarks>
-        Task SaveIpWhiteListAsync(TimeSpan? expiry, params string[] ip);
+        /// <param name="item">项目</param>
+        Task SaveWhiteListAsync(Policy policy, TimeSpan? expiry, params string[] item);
 
         /// <summary>
-        /// 删除IP白名单中数据
+        /// 删除黑名单中数据
         /// </summary>
-        /// <param name="ip">IP地址</param>
-        Task RemoveIpWhiteListAsync(params string[] ip);
+        Task RemoveBlackListAsync(Policy policy, params string[] item);
+
+        /// <summary>
+        /// 删除白名单中数据
+        /// </summary>
+        Task RemoveWhiteListAsync(Policy policy, params string[] item);
+
+        #endregion
     }
 }

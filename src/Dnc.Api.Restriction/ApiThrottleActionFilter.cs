@@ -77,12 +77,12 @@ namespace Dnc.Api.Throttle
             foreach (var attr in _attrs)
             {
                 string key = "";
-                switch (attr.BasisCondition)
+                switch (attr.Policy)
                 {
-                    case BasisCondition.Ip:
+                    case Policy.Ip:
                         key = _keyPrefix + "ip:" + _ip;
                         break;
-                    case BasisCondition.UserIdentity:
+                    case Policy.UserIdentity:
                         _userIdentity = _options.OnUserIdentity(context.HttpContext);
                         key = _keyPrefix + "user:" + _userIdentity;
                         break;
@@ -113,12 +113,12 @@ namespace Dnc.Api.Throttle
             foreach (var attr in _attrs)
             {
                 string key = "";
-                switch (attr.BasisCondition)
+                switch (attr.Policy)
                 {
-                    case BasisCondition.Ip:
+                    case Policy.Ip:
                         key = _keyPrefix + "ip:" + _ip;
                         break;
-                    case BasisCondition.UserIdentity:
+                    case Policy.UserIdentity:
                         key = _keyPrefix + "user:" + _userIdentity;
                         break;
                     default:

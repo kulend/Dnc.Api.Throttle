@@ -22,21 +22,7 @@ namespace Dnc.Api.Throttle
         /// <summary>
         /// 依据条件
         /// </summary>
-        public BasisCondition BasisCondition { set; get; } = BasisCondition.Ip;
-
-    }
-
-    public enum BasisCondition
-    {
-        /// <summary>
-        /// IP地址
-        /// </summary>
-        Ip,
-
-        /// <summary>
-        /// 用户身份
-        /// </summary>
-        UserIdentity
+        public Policy Policy { set; get; } = Policy.Ip;
 
     }
 }
