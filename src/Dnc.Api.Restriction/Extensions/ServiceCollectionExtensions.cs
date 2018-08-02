@@ -1,5 +1,6 @@
 ﻿using System;
 using Dnc.Api.Throttle;
+using Dnc.Api.Throttle.Internal;
 using Dnc.Api.Throttle.Redis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +14,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.Configure(options);
             services.TryAddSingleton<IRedisDatabaseProvider, RedisDatabaseProvider>();
             services.TryAddSingleton<ICacheProvider, RedisCacheProvider>();
+            services.TryAddSingleton<IStorageProvider, RedisStorageProvider>();
+            services.TryAddSingleton<IApiThrottleService, ApiThrottleService>();
 
             return services;
         }

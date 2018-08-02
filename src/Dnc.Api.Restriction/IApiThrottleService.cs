@@ -8,19 +8,52 @@ namespace Dnc.Api.Throttle
     public interface IApiThrottleService
     {
         /// <summary>
-        /// 添加Ip黑名单
+        /// 添加黑名单
         /// </summary>
+        /// <param name="policy">策略</param>
         /// <param name="expiry">过期时间</param>
-        /// <param name="ip">IP地址</param>
-        /// <remarks>会删除Ip白名单中相关数据</remarks>
-        Task AddIpBlackListAsync(TimeSpan? expiry, params string[] ip);
+        /// <param name="item">项目</param>
+        Task AddBlackListAsync(Policy policy, TimeSpan? expiry, params string[] item);
 
         /// <summary>
-        /// 添加Ip白名单
+        /// 添加白名单
         /// </summary>
         /// <param name="expiry">过期时间</param>
         /// <param name="ip">IP地址</param>
-        /// <remarks>会删除Ip黑名单中相关数据</remarks>
-        Task AddIpWhiteListAsync(TimeSpan? expiry, params string[] ip);
+        Task AddWhiteListAsync(Policy policy, TimeSpan? expiry, params string[] item);
+
+        /// <summary>
+        /// 移除黑名单
+        /// </summary>
+        /// <param name="policy">策略</param>
+        /// <param name="item">项目</param>
+        Task RemoveBlackListAsync(Policy policy, params string[] item);
+
+        /// <summary>
+        /// 移除白名单
+        /// </summary>
+        /// <param name="policy">策略</param>
+        /// <param name="item">项目</param>
+        Task RemoveWhiteListAsync(Policy policy, params string[] item);
+
+        /// <summary>
+        /// 取得黑名单列表（分页）
+        /// </summary>
+        Task<(long count, IEnumerable<string> items)> GetBlackListAsync(Policy policy, long skip, long take);
+
+        /// <summary>
+        /// 取得黑名单列表
+        /// </summary>
+        Task<IEnumerable<string>> GetBlackListAsync(Policy policy);
+
+        /// <summary>
+        /// 取得白名单列表（分页）
+        /// </summary>
+        Task<(long count, IEnumerable<string> items)> GetWhiteListAsync(Policy policy, long skip, long take);
+
+        /// <summary>
+        /// 取得白名单列表
+        /// </summary>
+        Task<IEnumerable<string>> GetWhiteListAsync(Policy policy);
     }
 }

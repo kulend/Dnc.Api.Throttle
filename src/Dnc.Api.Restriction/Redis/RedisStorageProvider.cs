@@ -2,6 +2,7 @@
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -73,19 +74,7 @@ namespace Dnc.Api.Throttle.Redis
             {
                 values[i] = new SortedSetEntry(item[i], score);
             }
-            string key = $"{_options.RedisKeyPrefix}:{listType}";
-            switch (policy)
-            {
-                case Policy.Ip:
-                    key += ":ip";
-                    break;
-                case Policy.UserIdentity:
-                    key += ":ui";
-                    break;
-                default:
-                    key += ":df";
-                    break;
-            }
+            string key = $"{_options.RedisKeyPrefix}:{listType}:{policy.ToString().ToLower()}";
             //保存
             await _cache.SortedSetAddAsync(key, values);
 
@@ -123,21 +112,95 @@ namespace Dnc.Api.Throttle.Redis
                 delValues[i] = item[i];
             }
 
-            string key = $"{_options.RedisKeyPrefix}:{listType}";
-            switch (policy)
-            {
-                case Policy.Ip:
-                    key += ":ip";
-                    break;
-                case Policy.UserIdentity:
-                    key += ":ui";
-                    break;
-                default:
-                    key += ":df";
-                    break;
-            }
+            string key = $"{_options.RedisKeyPrefix}:{listType}:{policy.ToString().ToLower()}";
+
             //删除
             await _cache.SortedSetRemoveAsync(key, delValues);
+        }
+
+        /// <summary>
+        /// 取得黑名单列表（分页）
+        /// </summary>
+        public async Task<(long count, IEnumerable<string> items)> GetBlackListAsync(Policy policy, long skip, long take)
+        {
+            string key = $"{_options.RedisKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            //取得件数
+            var count = await _cache.SortedSetLengthAsync(key, DateTime.Now.Ticks, double.PositiveInfinity, Exclude.Both);
+
+            if (count == 0)
+            {
+                return (0, new List<string>());
+            }
+
+            //取得数据
+            var data = await _cache.SortedSetRangeByScoreAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending, skip: skip, take: take);
+
+            return (count, data.Select(x => (string)x));
+
+            //if (policy.HasValue)
+            //{
+            //    string key = $"{_options.RedisKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            //    RedisValue[] data = await _cache.SortedSetRangeByScoreAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending, skip: skip, take: take);
+            //}
+            //else
+            //{
+            //    var unionKey = $"{_options.RedisKeyPrefix}:bl:all";
+            //    //删除合并结果集
+            //    await _cache.KeyDeleteAsync(unionKey);
+            //    //合并结果集
+            //    var keys = Enum.GetNames(typeof(Policy)).Select(name => (RedisKey)($"{_options.RedisKeyPrefix}:bl:{name.ToLower()}")).ToArray();
+            //    await _cache.SortedSetCombineAndStoreAsync(SetOperation.Union, destination: unionKey, keys: keys, weights: null, aggregate: Aggregate.Max);
+
+            //    //取得数据
+            //    RedisValue[] data = await _cache.SortedSetRangeByScoreAsync(unionKey, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending, skip: skip, take: take);
+
+            //}
+        }
+
+        /// <summary>
+        /// 取得黑名单列表
+        /// </summary>
+        public async Task<IEnumerable<string>> GetBlackListAsync(Policy policy)
+        {
+            string key = $"{_options.RedisKeyPrefix}:bl:{policy.ToString().ToLower()}";
+
+            //取得数据
+            var data = await _cache.SortedSetRangeByScoreAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending);
+
+            return data.Select(x => (string)x);
+        }
+
+        /// <summary>
+        /// 取得白名单列表（分页）
+        /// </summary>
+        public async Task<(long count, IEnumerable<string> items)> GetWhiteListAsync(Policy policy, long skip, long take)
+        {
+            string key = $"{_options.RedisKeyPrefix}:wl:{policy.ToString().ToLower()}";
+            //取得件数
+            var count = await _cache.SortedSetLengthAsync(key, DateTime.Now.Ticks, double.PositiveInfinity, Exclude.Both);
+
+            if (count == 0)
+            {
+                return (0, new List<string>());
+            }
+
+            //取得数据
+            var data = await _cache.SortedSetRangeByScoreAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending, skip: skip, take: take);
+
+            return (count, data.Select(x => (string)x));
+        }
+
+        /// <summary>
+        /// 取得白名单列表
+        /// </summary>
+        public async Task<IEnumerable<string>> GetWhiteListAsync(Policy policy)
+        {
+            string key = $"{_options.RedisKeyPrefix}:wl:{policy.ToString().ToLower()}";
+
+            //取得数据
+            var data = await _cache.SortedSetRangeByScoreAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending);
+
+            return data.Select(x => (string)x);
         }
     }
 

@@ -35,6 +35,26 @@ namespace Dnc.Api.Throttle
         /// </summary>
         Task RemoveWhiteListAsync(Policy policy, params string[] item);
 
+        /// <summary>
+        /// 取得黑名单列表（分页）
+        /// </summary>
+        Task<(long count, IEnumerable<string> items)> GetBlackListAsync(Policy policy, long skip, long take);
+
+        /// <summary>
+        /// 取得黑名单列表
+        /// </summary>
+        Task<IEnumerable<string>> GetBlackListAsync(Policy policy);
+
+        /// <summary>
+        /// 取得白名单列表（分页）
+        /// </summary>
+        Task<(long count, IEnumerable<string> items)> GetWhiteListAsync(Policy policy, long skip, long take);
+
+        /// <summary>
+        /// 取得白名单列表
+        /// </summary>
+        Task<IEnumerable<string>> GetWhiteListAsync(Policy policy);
+
         #endregion
     }
 }
