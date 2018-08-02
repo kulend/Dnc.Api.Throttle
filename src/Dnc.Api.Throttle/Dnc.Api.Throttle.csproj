@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
@@ -12,6 +12,7 @@
     <Authors>kulend@qq.com</Authors>
     <Company>www.kulend.com</Company>
     <Description>适用于.Net Core WebApi接口限流框架</Description>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
