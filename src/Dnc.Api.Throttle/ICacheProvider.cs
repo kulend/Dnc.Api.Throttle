@@ -14,5 +14,10 @@ namespace Dnc.Api.Throttle
         Task<bool> KeyExpireAsync(string key, TimeSpan? expiry);
 
         Task<long> SetAddAsync(string key, params string[] values);
+
+        /// <summary>
+        /// 取得计时时间段api调用次数
+        /// </summary>
+        Task<long> GetValidApiRecordCount(string apikey, Policy policy, string policyValue, DateTime now, int duration);
     }
 }

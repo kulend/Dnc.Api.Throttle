@@ -25,7 +25,7 @@ namespace Dnc.Api.Throttle
         private IEnumerable<ApiThrottleAttribute> _attrs;
         private string _actionName;
         private string _ip;
-        private string _keyPrefix;
+        private string _apiKey;
         private string _userIdentity;
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Dnc.Api.Throttle
 
             _ip = IpToNum(context.HttpContext.GetUserIp());
 
-            _keyPrefix = $"{_options.RedisKeyPrefix}:{_actionName}:";
+            _apiKey = $"{_options.RedisKeyPrefix}:{_actionName}";
         }
 
         /// <summary>
@@ -76,29 +76,29 @@ namespace Dnc.Api.Throttle
             //循环验证是否过载
             foreach (var attr in _attrs)
             {
-                string key = "";
-                switch (attr.Policy)
+                var isValid = await CheckItemAsync(context, attr);
+                if (!isValid)
                 {
-                    case Policy.Ip:
-                        key = _keyPrefix + "ip:" + _ip;
-                        break;
-                    case Policy.UserIdentity:
-                        _userIdentity = _options.OnUserIdentity(context.HttpContext);
-                        key = _keyPrefix + "user:" + _userIdentity;
-                        break;
-                    default:
-                        break;
-                }
-
-                //从Redis sorted set里面取得当前接口的历史数据
-                long count = await _cache.SortedSetLengthAsync(key, nowTime.Ticks - TimeSpan.FromSeconds(attr.Duration).Ticks, nowTime.Ticks);
-                if (count >= attr.Limit)
-                {
-                    return true;
+                    return false;
                 }
             }
 
-            return false;
+            return true;
+        }
+
+        private async Task<bool> CheckItemAsync(FilterContext context, ApiThrottleAttribute attr)
+        {
+            if (attr.Duration <= 0 || attr.Limit <= 0)
+            {
+                //不限流
+                return true;
+            }
+            //取得识别值
+            var policyValue = context.GetPolicyValue(attr.Policy, _options);
+
+            //判断是否过载
+            long count = await _cache.GetValidApiRecordCount(_apiKey, attr.Policy, policyValue, DateTime.Now, attr.Duration);
+            return count < attr.Limit;
         }
 
         /// <summary>
@@ -116,10 +116,10 @@ namespace Dnc.Api.Throttle
                 switch (attr.Policy)
                 {
                     case Policy.Ip:
-                        key = _keyPrefix + "ip:" + _ip;
+                        key = _apiKey + "ip:" + _ip;
                         break;
                     case Policy.UserIdentity:
-                        key = _keyPrefix + "user:" + _userIdentity;
+                        key = _apiKey + "user:" + _userIdentity;
                         break;
                     default:
                         break;
