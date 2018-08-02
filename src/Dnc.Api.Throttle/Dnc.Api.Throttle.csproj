@@ -1,9 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>Dnc.Api.Throttle</RootNamespace>
     <AssemblyName>Dnc.Api.Throttle</AssemblyName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageProjectUrl>https://github.com/kulend/Dnc.Api.Throttle</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/kulend/Dnc.Api.Throttle/blob/master/LICENSE</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/kulend/Dnc.Api.Throttle</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>kulend@qq.com</Authors>
+    <Company>www.kulend.com</Company>
+    <Description>适用于.Net Core WebApi接口限流框架</Description>
   </PropertyGroup>
 
   <ItemGroup>
