@@ -40,7 +40,7 @@ namespace Dnc.Api.Throttle.Internal
         /// 添加白名单
         /// </summary>
         /// <param name="expiry">过期时间</param>
-        /// <param name="ip">IP地址</param>
+        /// <param name="item">项目</param>
         public async Task AddWhiteListAsync(Policy policy, TimeSpan? expiry, params string[] item)
         {
             //保存白名单

@@ -26,41 +26,14 @@ namespace Dnc.Api.Throttle.Redis
         /// </summary>
         private readonly IEnumerable<IServer> _servers;
 
-        public RedisCacheProvider(IRedisDatabaseProvider dbProvider)
+        private readonly IStorageProvider _storage;
+
+        public RedisCacheProvider(IRedisDatabaseProvider dbProvider, IStorageProvider storage)
         {
             _dbProvider = dbProvider;
             _cache = _dbProvider.GetDatabase();
             _servers = _dbProvider.GetServerList();
-        }
-
-        public async Task<bool> SortedSetAddAsync(string key, string value, double score)
-        {
-            return await _cache.SortedSetAddAsync(key, value, score);
-        }
-
-        public async Task<long> SortedSetLengthAsync(string key, double min, double max)
-        {
-            return await _cache.SortedSetLengthAsync(key, min, max);
-        }
-
-        public async Task<bool> KeyExpireAsync(string key, TimeSpan? expiry)
-        {
-            return await _cache.KeyExpireAsync(key, expiry);
-        }
-
-        public async Task<long> SetAddAsync(string key, params string[] values)
-        {
-            if (values == null || values.Length == 0)
-            {
-                return 0;
-            }
-
-            RedisValue[] redisValues = new RedisValue[values.Length];
-            for (int i = 0; i < values.Length; i++)
-            {
-                redisValues[i] = values[i];
-            }
-            return await _cache.SetAddAsync(key, redisValues);
+            _storage = storage;
         }
 
         /// <summary>
@@ -72,5 +45,33 @@ namespace Dnc.Api.Throttle.Redis
             return await _cache.SortedSetLengthAsync(key, now.Ticks - TimeSpan.FromSeconds(duration).Ticks, now.Ticks);
         }
 
+        /// <summary>
+        /// 保存调用记录
+        /// </summary>
+        public async Task SaveApiRecordAsync(string apikey, Policy policy, string policyValue, DateTime now, int duration)
+        {
+            var key = apikey + ":" + policy.ToString() + ":" + policyValue;
+
+            await _cache.SortedSetAddAsync(key, now.Ticks.ToString(), now.Ticks);
+
+            //设置过期时间
+            await _cache.KeyExpireAsync(key, TimeSpan.FromSeconds(duration));
+        }
+
+        /// <summary>
+        /// 取得黑名单列表
+        /// </summary>
+        public async Task<IEnumerable<string>> GetBlackListAsync(Policy policy)
+        {
+            return await _storage.GetBlackListAsync(policy);
+        }
+
+        /// <summary>
+        /// 取得白名单列表
+        /// </summary>
+        public async Task<IEnumerable<string>> GetWhiteListAsync(Policy policy)
+        {
+            return await _storage.GetWhiteListAsync(policy);
+        }
     }
 }

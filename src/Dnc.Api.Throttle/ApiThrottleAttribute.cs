@@ -5,7 +5,7 @@ using System.Text;
 namespace Dnc.Api.Throttle
 {
     /// <summary>
-    /// 接口管制Attribute
+    /// 接口节流Attribute
     /// </summary>
     public class ApiThrottleAttribute : Attribute
     {
@@ -20,7 +20,7 @@ namespace Dnc.Api.Throttle
         public int Duration { set; get; } = 60;
 
         /// <summary>
-        /// 依据条件
+        /// 策略
         /// </summary>
         public Policy Policy { set; get; } = Policy.Ip;
 

@@ -23,55 +23,64 @@ namespace Dnc.Api.Throttle
         }
 
         private IEnumerable<ApiThrottleAttribute> _attrs;
-        private string _actionName;
-        private string _ip;
-        private string _apiKey;
-        private string _userIdentity;
+        private string _actionName = null;
+        private string _apiKey = null;
 
         /// <summary>
-        /// 处理接口过载
+        /// 处理接口
         /// </summary>
         /// <returns></returns>
         private async Task<bool> HandleAsync(FilterContext context)
         {
-            //处理数据
-            GetData(context);
-
-            //检查是否过载
-            var isOverload =  await CheckAsync(context);
-            if (isOverload)
-            {
-                return false;
-            }
-            else
-            {
-                //未过载
-                //保存记录到Redis
-                await SaveAsync();
-                return true;
-            }
-        }
-
-        private void GetData(FilterContext context)
-        {
+            //预处理数据
             var method = context.GetHandlerMethod();
 
             _actionName = method.DeclaringType.FullName + "." + method.Name;
 
             _attrs = method.GetCustomAttributes<ApiThrottleAttribute>(true);
 
-            _ip = IpToNum(context.HttpContext.GetUserIp());
-
             _apiKey = $"{_options.RedisKeyPrefix}:{_actionName}";
+
+            //检查是否过载
+            var isValid =  await CheckAsync(context);
+            if (isValid)
+            {
+                //保存记录
+                await SaveAsync(context);
+            }
+
+            return isValid;
         }
 
         /// <summary>
-        /// 检查是否过载
+        /// 检查过载
         /// </summary>
         /// <returns></returns>
         private async Task<bool> CheckAsync(FilterContext context)
         {
-            DateTime nowTime = DateTime.Now;
+            //黑名单检查
+            foreach (Policy policy in Enum.GetValues(typeof(Policy)))
+            {
+                var bl = await _cache.GetBlackListAsync(policy);
+                //取得识别值
+                var policyValue = context.GetPolicyValue(policy, _options);
+                if (bl.Contains(policyValue))
+                {
+                    return false;
+                }
+            }
+
+            //白名单检查
+            foreach (Policy policy in Enum.GetValues(typeof(Policy)))
+            {
+                var wl = await _cache.GetWhiteListAsync(policy);
+                //取得识别值
+                var policyValue = context.GetPolicyValue(policy, _options);
+                if (wl.Contains(policyValue))
+                {
+                    return true;
+                }
+            }
 
             //循环验证是否过载
             foreach (var attr in _attrs)
@@ -102,58 +111,21 @@ namespace Dnc.Api.Throttle
         }
 
         /// <summary>
-        /// 保持记录到redis
+        /// 保存api调用记录
         /// </summary>
         /// <returns></returns>
-        private async Task SaveAsync()
+        private async Task SaveAsync(FilterContext context)
         {
             DateTime nowTime = DateTime.Now;
 
             //循环保存记录
             foreach (var attr in _attrs)
             {
-                string key = "";
-                switch (attr.Policy)
-                {
-                    case Policy.Ip:
-                        key = _apiKey + "ip:" + _ip;
-                        break;
-                    case Policy.UserIdentity:
-                        key = _apiKey + "user:" + _userIdentity;
-                        break;
-                    default:
-                        break;
-                }
+                //取得识别值
+                var policyValue = context.GetPolicyValue(attr.Policy, _options);
 
                 //保存记录
-                await _cache.SortedSetAddAsync(key, nowTime.Ticks.ToString(), nowTime.Ticks);
-
-                //设置过期时间
-                await _cache.KeyExpireAsync(key, TimeSpan.FromSeconds(attr.Duration + 60));
-            }
-        }
-
-        private static string IpToNum(string ip)
-        {
-            if (ip.Contains("."))
-            {
-                //IPv4
-                char[] separator = new char[] { '.' };
-                string[] items = ip.Split(separator);
-                return (long.Parse(items[0]) << 24
-                        | long.Parse(items[1]) << 16
-                        | long.Parse(items[2]) << 8
-                        | long.Parse(items[3])).ToString();
-            }
-            else
-            {
-                //IPv6
-                IPAddress ipAddr = IPAddress.Parse(ip);
-                List<Byte> ipFormat = ipAddr.GetAddressBytes().ToList();
-                ipFormat.Reverse();
-                ipFormat.Add(0);
-                BigInteger ipAsInt = new BigInteger(ipFormat.ToArray());
-                return ipAsInt.ToString();
+                await _cache.SaveApiRecordAsync(_apiKey, attr.Policy, policyValue, nowTime, attr.Duration);
             }
         }
 
