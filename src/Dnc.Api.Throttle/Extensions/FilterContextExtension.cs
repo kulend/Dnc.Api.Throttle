@@ -57,7 +57,7 @@ namespace Dnc.Api.Throttle.Extensions
             switch (policy)
             {
                 case Policy.Ip:
-                    return context.HttpContext.GetUserIp();
+                    return options.OnIpAddress(context.HttpContext);
                 case Policy.UserIdentity:
                     return options.OnUserIdentity(context.HttpContext);
                 default:

@@ -64,7 +64,7 @@ namespace Dnc.Api.Throttle
                 var bl = await _cache.GetBlackListAsync(policy);
                 //取得识别值
                 var policyValue = context.GetPolicyValue(policy, _options);
-                if (bl.Contains(policyValue))
+                if (!string.IsNullOrEmpty(policyValue) && bl.Contains(policyValue))
                 {
                     return false;
                 }
@@ -76,7 +76,7 @@ namespace Dnc.Api.Throttle
                 var wl = await _cache.GetWhiteListAsync(policy);
                 //取得识别值
                 var policyValue = context.GetPolicyValue(policy, _options);
-                if (wl.Contains(policyValue))
+                if (!string.IsNullOrEmpty(policyValue) && wl.Contains(policyValue))
                 {
                     return true;
                 }
@@ -138,7 +138,7 @@ namespace Dnc.Api.Throttle
             }
             else
             {
-                context.Result = new ApiThrottleResult { Content = "访问过于频繁，请稍后重试"};
+                context.Result = _options.onIntercepted(context.HttpContext); ;
             }
         }
 
@@ -156,7 +156,8 @@ namespace Dnc.Api.Throttle
             }
             else
             {
-                context.Result = new ApiThrottleResult { Content = "访问过于频繁，请稍后重试" };
+
+                context.Result = _options.onIntercepted(context.HttpContext);
             }
         }
     }
