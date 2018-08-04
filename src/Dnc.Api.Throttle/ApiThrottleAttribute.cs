@@ -24,5 +24,10 @@ namespace Dnc.Api.Throttle
         /// </summary>
         public Policy Policy { set; get; } = Policy.Ip;
 
+        /// <summary>
+        /// 当识别值为空时处理方式
+        /// </summary>
+        public WhenNull WhenNull { set; get; } = WhenNull.Pass;
+
     }
 }

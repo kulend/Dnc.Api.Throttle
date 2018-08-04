@@ -10,9 +10,9 @@ namespace Dnc.Api.Throttle.Internal
     {
         private readonly ICacheProvider _cache;
         private readonly IStorageProvider _storage;
-        private readonly ApiThrottleOption _options;
+        private readonly ApiThrottleOptions _options;
 
-        public ApiThrottleService(ICacheProvider cache, IOptions<ApiThrottleOption> options, IStorageProvider storage)
+        public ApiThrottleService(ICacheProvider cache, IOptions<ApiThrottleOptions> options, IStorageProvider storage)
         {
             _cache = cache;
             _options = options.Value;
@@ -34,6 +34,10 @@ namespace Dnc.Api.Throttle.Internal
 
             //从白名单中移除
             await _storage.RemoveWhiteListAsync(policy, item);
+
+            //清除缓存
+            await _cache.ClearBlackListCacheAsync(policy);
+            await _cache.ClearWhiteListCacheAsync(policy);
         }
 
         /// <summary>
@@ -48,6 +52,10 @@ namespace Dnc.Api.Throttle.Internal
 
             //从黑名单中移除
             await _storage.RemoveBlackListAsync(policy, item);
+
+            //清除缓存
+            await _cache.ClearBlackListCacheAsync(policy);
+            await _cache.ClearWhiteListCacheAsync(policy);
         }
 
         /// <summary>
@@ -59,6 +67,8 @@ namespace Dnc.Api.Throttle.Internal
         {
             //从黑名单中移除
             await _storage.RemoveBlackListAsync(policy, item);
+            //清除缓存
+            await _cache.ClearBlackListCacheAsync(policy);
         }
 
         /// <summary>
@@ -70,12 +80,14 @@ namespace Dnc.Api.Throttle.Internal
         {
             //从白名单中移除
             await _storage.RemoveWhiteListAsync(policy, item);
+            //清除缓存
+            await _cache.ClearWhiteListCacheAsync(policy);
         }
 
         /// <summary>
         /// 取得黑名单列表（分页）
         /// </summary>
-        public async Task<(long count, IEnumerable<string> items)> GetBlackListAsync(Policy policy, long skip, long take)
+        public async Task<(long count, IEnumerable<ListItem> items)> GetBlackListAsync(Policy policy, long skip, long take)
         {
             return await _storage.GetBlackListAsync(policy, skip, take);
         }
@@ -83,7 +95,7 @@ namespace Dnc.Api.Throttle.Internal
         /// <summary>
         /// 取得黑名单列表
         /// </summary>
-        public async Task<IEnumerable<string>> GetBlackListAsync(Policy policy)
+        public async Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy)
         {
             return await _storage.GetBlackListAsync(policy);
         }
@@ -91,7 +103,7 @@ namespace Dnc.Api.Throttle.Internal
         /// <summary>
         /// 取得白名单列表（分页）
         /// </summary>
-        public async Task<(long count, IEnumerable<string> items)> GetWhiteListAsync(Policy policy, long skip, long take)
+        public async Task<(long count, IEnumerable<ListItem> items)> GetWhiteListAsync(Policy policy, long skip, long take)
         {
             return await _storage.GetWhiteListAsync(policy, skip, take);
         }
@@ -99,7 +111,7 @@ namespace Dnc.Api.Throttle.Internal
         /// <summary>
         /// 取得白名单列表
         /// </summary>
-        public async Task<IEnumerable<string>> GetWhiteListAsync(Policy policy)
+        public async Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy)
         {
             return await _storage.GetWhiteListAsync(policy);
         }

@@ -20,11 +20,23 @@ namespace Dnc.Api.Throttle
         /// <summary>
         /// 取得黑名单列表
         /// </summary>
-        Task<IEnumerable<string>> GetBlackListAsync(Policy policy);
+        Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy);
 
         /// <summary>
         /// 取得白名单列表
         /// </summary>
-        Task<IEnumerable<string>> GetWhiteListAsync(Policy policy);
+        Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy);
+
+        /// <summary>
+        /// 清除黑名单缓存
+        /// </summary>
+        /// <returns></returns>
+        Task ClearBlackListCacheAsync(Policy policy);
+
+        /// <summary>
+        /// 清除白名单缓存
+        /// </summary>
+        /// <returns></returns>
+        Task ClearWhiteListCacheAsync(Policy policy);
     }
 }

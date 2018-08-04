@@ -9,13 +9,21 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddApiThrottle(this IServiceCollection services, Action<ApiThrottleOption> options)
+        public static IServiceCollection AddApiThrottle(this IServiceCollection services, Action<ApiThrottleOptions> options)
         {
             services.Configure(options);
-            services.TryAddSingleton<IRedisDatabaseProvider, RedisDatabaseProvider>();
-            services.TryAddSingleton<ICacheProvider, RedisCacheProvider>();
-            services.TryAddSingleton<IStorageProvider, RedisStorageProvider>();
             services.TryAddSingleton<IApiThrottleService, ApiThrottleService>();
+
+            //Options and extension service
+            var opts = new ApiThrottleOptions();
+            options(opts);
+
+            foreach (var serviceExtension in opts.Extensions)
+            {
+                serviceExtension.AddServices(services);
+            }
+
+            services.AddSingleton(opts);
 
             return services;
         }

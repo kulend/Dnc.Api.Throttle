@@ -20,9 +20,9 @@ namespace Dnc.Api.Throttle.Redis
         /// </summary>
         private readonly Lazy<ConnectionMultiplexer> _connectionMultiplexer;
 
-        public RedisDatabaseProvider(IOptions<ApiThrottleOption> options)
+        public RedisDatabaseProvider(string connectionString)
         {
-            _connectionString = options.Value?.RedisConnectionString;
+            _connectionString = connectionString;
             _connectionMultiplexer = new Lazy<ConnectionMultiplexer>(CreateConnectionMultiplexer);
         }
 
@@ -86,7 +86,7 @@ namespace Dnc.Api.Throttle.Redis
         }
     }
 
-    public interface IRedisDatabaseProvider
+    internal interface IRedisDatabaseProvider
     {
         IDatabase GetDatabase();
 

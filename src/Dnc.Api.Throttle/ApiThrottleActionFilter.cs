@@ -14,17 +14,17 @@ namespace Dnc.Api.Throttle
     public class ApiThrottleActionFilter : IAsyncActionFilter, IAsyncPageFilter
     {
         private readonly ICacheProvider _cache;
-        private readonly ApiThrottleOption _options;
+        private readonly ApiThrottleOptions _options;
 
-        public ApiThrottleActionFilter(ICacheProvider cache, IOptions<ApiThrottleOption> options)
+        public ApiThrottleActionFilter(ICacheProvider cache, ApiThrottleOptions options)
         {
             _cache = cache;
-            _options = options.Value;
+            _options = options;
         }
 
+        //Api名称
+        private string _api = null;
         private IEnumerable<ApiThrottleAttribute> _attrs;
-        private string _actionName = null;
-        private string _apiKey = null;
 
         /// <summary>
         /// 处理接口
@@ -35,11 +35,9 @@ namespace Dnc.Api.Throttle
             //预处理数据
             var method = context.GetHandlerMethod();
 
-            _actionName = method.DeclaringType.FullName + "." + method.Name;
+            _api = method.DeclaringType.FullName + "." + method.Name;
 
             _attrs = method.GetCustomAttributes<ApiThrottleAttribute>(true);
-
-            _apiKey = $"{_options.RedisKeyPrefix}:{_actionName}";
 
             //检查是否过载
             var isValid =  await CheckAsync(context);
@@ -104,9 +102,12 @@ namespace Dnc.Api.Throttle
             }
             //取得识别值
             var policyValue = context.GetPolicyValue(attr.Policy, _options);
-
+            if (string.IsNullOrEmpty(policyValue))
+            {
+                return attr.WhenNull == WhenNull.Pass;
+            }
             //判断是否过载
-            long count = await _cache.GetValidApiRecordCount(_apiKey, attr.Policy, policyValue, DateTime.Now, attr.Duration);
+            long count = await _cache.GetValidApiRecordCount(_api, attr.Policy, policyValue, DateTime.Now, attr.Duration);
             return count < attr.Limit;
         }
 
@@ -125,7 +126,7 @@ namespace Dnc.Api.Throttle
                 var policyValue = context.GetPolicyValue(attr.Policy, _options);
 
                 //保存记录
-                await _cache.SaveApiRecordAsync(_apiKey, attr.Policy, policyValue, nowTime, attr.Duration);
+                await _cache.SaveApiRecordAsync(_api, attr.Policy, policyValue, nowTime, attr.Duration);
             }
         }
 

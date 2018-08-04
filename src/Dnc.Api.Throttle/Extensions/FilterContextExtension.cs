@@ -52,7 +52,7 @@ namespace Dnc.Api.Throttle.Extensions
             return method;
         }
 
-        internal static string GetPolicyValue(this FilterContext context, Policy policy, ApiThrottleOption options)
+        internal static string GetPolicyValue(this FilterContext context, Policy policy, ApiThrottleOptions options)
         {
             switch (policy)
             {

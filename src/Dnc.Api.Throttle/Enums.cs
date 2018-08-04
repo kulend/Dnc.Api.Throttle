@@ -20,4 +20,20 @@ namespace Dnc.Api.Throttle
         /// </summary>
         UserIdentity
     }
+
+    /// <summary>
+    /// 当识别值为空时处理方式
+    /// </summary>
+    public enum WhenNull
+    {
+        /// <summary>
+        /// 通过
+        /// </summary>
+        Pass,
+
+        /// <summary>
+        /// 拦截
+        /// </summary>
+        Intercept
+    }
 }
