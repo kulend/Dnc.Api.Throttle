@@ -43,6 +43,7 @@ namespace Dnc.Api.Throttle
             var isValid =  await CheckAsync(context);
             if (isValid)
             {
+                context.HttpContext.Request.Headers[Common.HeaderStatusKey] = "1";
                 //保存记录
                 await SaveAsync(context);
             }
@@ -56,29 +57,37 @@ namespace Dnc.Api.Throttle
         /// <returns></returns>
         private async Task<bool> CheckAsync(FilterContext context)
         {
-            //黑名单检查
-            foreach (Policy policy in Enum.GetValues(typeof(Policy)))
-            {
-                var bl = await _cache.GetBlackListAsync(policy);
-                //取得识别值
-                var policyValue = context.GetPolicyValue(policy, _options);
-                if (!string.IsNullOrEmpty(policyValue) && bl.Contains(policyValue))
-                {
-                    return false;
-                }
-            }
+            ////黑名单检查
+            //foreach (Policy policy in Enum.GetValues(typeof(Policy)))
+            //{
+            //    if (policy == Policy.Header || policy == Policy.Query)
+            //    {
+            //        continue;
+            //    }
+            //    var bl = await _cache.GetBlackListAsync(policy);
+            //    //取得识别值
+            //    var policyValue = context.GetPolicyValue(_options, policy, null);
+            //    if (!string.IsNullOrEmpty(policyValue) && bl.Any(x => string.Equals(x.Value, policyValue)))
+            //    {
+            //        return false;
+            //    }
+            //}
 
-            //白名单检查
-            foreach (Policy policy in Enum.GetValues(typeof(Policy)))
-            {
-                var wl = await _cache.GetWhiteListAsync(policy);
-                //取得识别值
-                var policyValue = context.GetPolicyValue(policy, _options);
-                if (!string.IsNullOrEmpty(policyValue) && wl.Contains(policyValue))
-                {
-                    return true;
-                }
-            }
+            ////白名单检查
+            //foreach (Policy policy in Enum.GetValues(typeof(Policy)))
+            //{
+            //    if (policy == Policy.Header || policy == Policy.Query)
+            //    {
+            //        continue;
+            //    }
+            //    var wl = await _cache.GetWhiteListAsync(policy);
+            //    //取得识别值
+            //    var policyValue = context.HttpContext.GetPolicyValue(_options, policy, null);
+            //    if (!string.IsNullOrEmpty(policyValue) && wl.Any(x => string.Equals(x.Value, policyValue)))
+            //    {
+            //        return true;
+            //    }
+            //}
 
             //循环验证是否过载
             foreach (var attr in _attrs)
@@ -101,7 +110,7 @@ namespace Dnc.Api.Throttle
                 return true;
             }
             //取得识别值
-            var policyValue = context.GetPolicyValue(attr.Policy, _options);
+            var policyValue = context.HttpContext.GetPolicyValue(_options, attr.Policy, attr.PolicyKey);
             if (string.IsNullOrEmpty(policyValue))
             {
                 return attr.WhenNull == WhenNull.Pass;
@@ -123,7 +132,7 @@ namespace Dnc.Api.Throttle
             foreach (var attr in _attrs)
             {
                 //取得识别值
-                var policyValue = context.GetPolicyValue(attr.Policy, _options);
+                var policyValue = context.HttpContext.GetPolicyValue(_options, attr.Policy, attr.PolicyKey);
 
                 //保存记录
                 await _cache.SaveApiRecordAsync(_api, attr.Policy, policyValue, nowTime, attr.Duration);
@@ -139,7 +148,7 @@ namespace Dnc.Api.Throttle
             }
             else
             {
-                context.Result = _options.onIntercepted(context.HttpContext); ;
+                context.Result = _options.onIntercepted(context.HttpContext, IntercepteWhere.ActionFilter);
             }
         }
 
@@ -158,7 +167,7 @@ namespace Dnc.Api.Throttle
             else
             {
 
-                context.Result = _options.onIntercepted(context.HttpContext);
+                context.Result = _options.onIntercepted(context.HttpContext, IntercepteWhere.PageFilter);
             }
         }
     }

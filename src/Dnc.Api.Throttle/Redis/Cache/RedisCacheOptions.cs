@@ -15,7 +15,7 @@ namespace Dnc.Api.Throttle.Redis.Cache
         {
             get
             {
-                return SameWithStorage ? KeyPrefix : KeyPrefix + ":cache";
+                return KeyPrefix + ":cache";
             }
         }
     }

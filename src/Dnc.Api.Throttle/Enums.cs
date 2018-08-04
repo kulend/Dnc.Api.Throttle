@@ -18,7 +18,17 @@ namespace Dnc.Api.Throttle
         /// <summary>
         /// 用户身份
         /// </summary>
-        UserIdentity
+        UserIdentity,
+
+        /// <summary>
+        /// Request Header
+        /// </summary>
+        Header,
+
+        /// <summary>
+        /// Request Query
+        /// </summary>
+        Query
     }
 
     /// <summary>
@@ -35,5 +45,17 @@ namespace Dnc.Api.Throttle
         /// 拦截
         /// </summary>
         Intercept
+    }
+
+    /// <summary>
+    /// 拦截位置
+    /// </summary>
+    public enum IntercepteWhere
+    {
+        ActionFilter,
+
+        PageFilter,
+
+        Middleware
     }
 }

@@ -51,18 +51,5 @@ namespace Dnc.Api.Throttle.Extensions
 
             return method;
         }
-
-        internal static string GetPolicyValue(this FilterContext context, Policy policy, ApiThrottleOptions options)
-        {
-            switch (policy)
-            {
-                case Policy.Ip:
-                    return options.OnIpAddress(context.HttpContext);
-                case Policy.UserIdentity:
-                    return options.OnUserIdentity(context.HttpContext);
-                default:
-                    throw new ArgumentException("参数出错", "policy");
-            }
-        }
     }
 }

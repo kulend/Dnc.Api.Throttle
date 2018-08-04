@@ -45,18 +45,18 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// <summary>
         /// 取得计时时间段api调用次数
         /// </summary>
-        public async Task<long> GetValidApiRecordCount(string apikey, Policy policy, string policyValue, DateTime now, int duration)
+        public async Task<long> GetValidApiRecordCount(string api, Policy policy, string policyValue, DateTime now, int duration)
         {
-            var key = apikey + ":" + policy.ToString() + ":" + policyValue;
+            var key = $"{_options.CacheKeyPrefix}:{api}:{policy.ToString().ToLower()}:{policyValue}";
             return await _db.SortedSetLengthAsync(key, now.Ticks - TimeSpan.FromSeconds(duration).Ticks, now.Ticks);
         }
 
         /// <summary>
         /// 保存调用记录
         /// </summary>
-        public async Task SaveApiRecordAsync(string apikey, Policy policy, string policyValue, DateTime now, int duration)
+        public async Task SaveApiRecordAsync(string api, Policy policy, string policyValue, DateTime now, int duration)
         {
-            var key = apikey + ":" + policy.ToString() + ":" + policyValue;
+            var key = $"{_options.CacheKeyPrefix}:{api}:{policy.ToString().ToLower()}:{policyValue}";
 
             await _db.SortedSetAddAsync(key, now.Ticks.ToString(), now.Ticks);
 
@@ -69,11 +69,11 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// </summary>
         public async Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy)
         {
-            //如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
-            if (_options.SameWithStorage)
-            {
-                return await _storage.GetBlackListAsync(policy);
-            }
+            ////如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
+            //if (_options.SameWithStorage)
+            //{
+            //    return await _storage.GetBlackListAsync(policy);
+            //}
 
             var key = $"{_options.CacheKeyPrefix}:bl:{policy.ToString().ToLower()}";
             //判断是否存在key
@@ -85,7 +85,15 @@ namespace Dnc.Api.Throttle.Redis.Cache
             }
             else
             {
-                var data = await _storage.GetBlackListAsync(policy);
+                var data = (await _storage.GetBlackListAsync(policy)).ToList();
+                //Ip地址转换
+                if (policy == Policy.Ip)
+                {
+                    foreach (var item in data)
+                    {
+                        item.Value = Common.IpToNum(item.Value);
+                    }
+                }
                 SortedSetEntry[] entrys = data.Select(x => new SortedSetEntry(x.Value, x.ExpireTicks)).ToArray();
                 //保存
                 await _db.SortedSetAddAsync(key, entrys);
@@ -101,11 +109,11 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// </summary>
         public async Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy)
         {
-            //如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
-            if (_options.SameWithStorage)
-            {
-                return await _storage.GetWhiteListAsync(policy);
-            }
+            ////如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
+            //if (_options.SameWithStorage)
+            //{
+            //    return await _storage.GetWhiteListAsync(policy);
+            //}
 
             var key = $"{_options.CacheKeyPrefix}:wl:{policy.ToString().ToLower()}";
             //判断是否存在key
@@ -118,6 +126,14 @@ namespace Dnc.Api.Throttle.Redis.Cache
             else
             {
                 var data = await _storage.GetWhiteListAsync(policy);
+                //Ip地址转换
+                if (policy == Policy.Ip)
+                {
+                    foreach (var item in data)
+                    {
+                        item.Value = Common.IpToNum(item.Value); ;
+                    }
+                }
                 SortedSetEntry[] entrys = data.Select(x => new SortedSetEntry(x.Value, x.ExpireTicks)).ToArray();
                 //保存
                 await _db.SortedSetAddAsync(key, entrys);
@@ -134,12 +150,12 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// <returns></returns>
         public async Task ClearBlackListCacheAsync(Policy policy)
         {
-            //如果和Storage是相同的redis库，则不需要清缓存
-            if (!_options.SameWithStorage)
-            {
-                var key = $"{_options.CacheKeyPrefix}:bl:{policy.ToString().ToLower()}";
-                await _db.KeyDeleteAsync(key);
-            }
+            ////如果和Storage是相同的redis库，则不需要清缓存
+            //if (!_options.SameWithStorage)
+            //{
+            var key = $"{_options.CacheKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            await _db.KeyDeleteAsync(key);
+            //}
         }
 
         /// <summary>
@@ -148,12 +164,12 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// <returns></returns>
         public async Task ClearWhiteListCacheAsync(Policy policy)
         {
-            //如果和Storage是相同的redis库，则不需要清缓存
-            if (!_options.SameWithStorage)
-            {
-                var key = $"{_options.CacheKeyPrefix}:wl:{policy.ToString().ToLower()}";
-                await _db.KeyDeleteAsync(key);
-            }
+            ////如果和Storage是相同的redis库，则不需要清缓存
+            //if (!_options.SameWithStorage)
+            //{
+            var key = $"{_options.CacheKeyPrefix}:wl:{policy.ToString().ToLower()}";
+            await _db.KeyDeleteAsync(key);
+            //}
         }
     }
 }

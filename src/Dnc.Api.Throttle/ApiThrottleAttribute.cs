@@ -7,6 +7,7 @@ namespace Dnc.Api.Throttle
     /// <summary>
     /// 接口节流Attribute
     /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class ApiThrottleAttribute : Attribute
     {
         /// <summary>
@@ -29,5 +30,13 @@ namespace Dnc.Api.Throttle
         /// </summary>
         public WhenNull WhenNull { set; get; } = WhenNull.Pass;
 
+        /// <summary>
+        /// 策略Key
+        /// </summary>
+        /// <remarks>
+        /// Policy == Policy.Header是，PolicyKey指定为对应Header的key
+        /// Policy == Policy.Query是，PolicyKey指定为对应Query的key
+        /// </remarks>
+        public string PolicyKey { set; get; }
     }
 }
