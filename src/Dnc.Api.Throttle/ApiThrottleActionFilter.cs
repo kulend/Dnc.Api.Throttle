@@ -24,7 +24,7 @@ namespace Dnc.Api.Throttle
 
         //Api名称
         private string _api = null;
-        private IEnumerable<RateValve> _valves;
+        private IEnumerable<Valve> _valves;
 
         /// <summary>
         /// 处理接口
@@ -37,7 +37,7 @@ namespace Dnc.Api.Throttle
 
             _api = method.DeclaringType.FullName + "." + method.Name;
 
-            _valves = method.GetCustomAttributes<RateValve>(true);
+            _valves = method.GetCustomAttributes<Valve>(true);
 
             //检查是否过载
             var result =  await CheckAsync(context);
@@ -62,13 +62,8 @@ namespace Dnc.Api.Throttle
         private async Task<(bool result, Valve valve)> CheckAsync(FilterContext context)
         {
             //循环验证是否过载
-            foreach (var valve in _valves)
+            foreach (var valve in _valves.OrderByDescending(x => x.Priority))
             {
-                if (valve.Duration <= 0 || valve.Limit <= 0)
-                {
-                    //不限流
-                    continue;
-                }
                 //取得识别值
                 var policyValue = context.HttpContext.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
                 //识别值为空时处理
@@ -83,11 +78,39 @@ namespace Dnc.Api.Throttle
                         return (false, valve);
                     }
                 }
-                //判断是否过载
-                long count = await _cache.GetApiRecordCountAsync(_api, valve.Policy, valve.PolicyKey, policyValue, DateTime.Now, valve.Duration);
-                if (count >= valve.Limit)
+
+                if (valve is BlackListValve)
                 {
-                    return (false, valve);
+                    //黑名单
+                    var wl = await _cache.GetRosterListAsync(RosterType.BlackList, _api, valve.Policy, valve.PolicyKey);
+                    if (wl.Any(x => string.Equals(x.Value, policyValue)))
+                    {
+                        return (false, valve);
+                    }
+                }
+                else if (valve is WhiteListValve)
+                {
+                    //白名单
+                    var wl = await _cache.GetRosterListAsync(RosterType.WhiteList, _api, valve.Policy, valve.PolicyKey);
+                    if (wl.Any(x => string.Equals(x.Value, policyValue)))
+                    {
+                        return (true, null);
+                    }
+                }
+                else if (valve is RateValve rateValve)
+                {
+                    //速率阀门
+                    if (rateValve.Duration <= 0 || rateValve.Limit <= 0)
+                    {
+                        //不限流
+                        continue;
+                    }
+                    //判断是否过载
+                    long count = await _cache.GetApiRecordCountAsync(_api, rateValve.Policy, rateValve.PolicyKey, policyValue, DateTime.Now, rateValve.Duration);
+                    if (count >= rateValve.Limit)
+                    {
+                        return (false, valve);
+                    }
                 }
             }
 
@@ -103,7 +126,7 @@ namespace Dnc.Api.Throttle
             DateTime nowTime = DateTime.Now;
 
             //循环保存记录
-            foreach (var valve in _valves)
+            foreach (RateValve valve in _valves.Where(x => x is RateValve))
             {
                 //取得识别值
                 var policyValue = context.HttpContext.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
