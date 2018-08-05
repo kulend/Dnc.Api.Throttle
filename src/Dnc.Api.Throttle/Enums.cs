@@ -58,4 +58,11 @@ namespace Dnc.Api.Throttle
 
         Middleware
     }
+
+    public enum RosterType
+    {
+        BlackList,
+
+        WhiteList
+    }
 }

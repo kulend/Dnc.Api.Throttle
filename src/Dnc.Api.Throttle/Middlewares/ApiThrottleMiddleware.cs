@@ -4,11 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Dnc.Api.Throttle.Middlewares
@@ -30,6 +27,8 @@ namespace Dnc.Api.Throttle.Middlewares
         /// </summary>
         private readonly ApiThrottleOptions _options;
 
+        private DateTime nowTime;
+
         public ApiThrottleMiddleware(RequestDelegate next, ICacheProvider cache, IOptions<ApiThrottleOptions> options)
         {
             _next = next;
@@ -39,8 +38,11 @@ namespace Dnc.Api.Throttle.Middlewares
 
         public async Task Invoke(HttpContext context)
         {
+            nowTime = DateTime.Now;
+
+            //check
             var result = await CheckAsync(context);
-            if (result)
+            if (result.result)
             {
                 //在Request的header中存放状态标记
                 context.Request.Headers[Common.HeaderStatusKey] = "1";
@@ -56,49 +58,21 @@ namespace Dnc.Api.Throttle.Middlewares
             }
             else
             {
-                IActionResult actionResult =  _options.onIntercepted(context, IntercepteWhere.Middleware);
+                context.Request.Headers[Common.HeaderStatusKey] = "0";
+                IActionResult actionResult =  _options.onIntercepted(context, result.valve, IntercepteWhere.Middleware);
                 ActionContext c = new ActionContext(httpContext:context, routeData: new RouteData(), actionDescriptor: new ActionDescriptor());
                 await actionResult.ExecuteResultAsync(c);
             }
         }
 
-        private async Task<bool> CheckAsync(HttpContext context)
+        private async Task<(bool result, Valve valve)> CheckAsync(HttpContext context)
         {
-            //黑名单检查
-            foreach (var valve in _options.Global.BlackListValves)
-            {
-                var wl = await _cache.GetBlackListAsync(valve.Policy);
-                //取得识别值
-                var policyValue = context.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
-                if (!string.IsNullOrEmpty(policyValue) && wl.Any(x => string.Equals(x.Value, policyValue)))
-                {
-                    return false;
-                }
-            }
-
-            //白名单检查
-            foreach (var valve in _options.Global.WhiteListValves)
-            {
-                var wl = await _cache.GetWhiteListAsync(valve.Policy);
-                //取得识别值
-                var policyValue = context.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
-                if (!string.IsNullOrEmpty(policyValue) && wl.Any(x => string.Equals(x.Value, policyValue)))
-                {
-                    return true;
-                }
-            }
-
             //全局阀门
-            foreach (var valve in _options.Global.Valves)
+            foreach (var valve in _options.Global.Valves.OrderByDescending(x => x.Priority))
             {
-                if (valve.Duration <= 0 || valve.Limit <= 0)
-                {
-                    //不限流
-                    continue;
-                }
-
                 //取得识别值
                 var policyValue = context.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
+                //识别值为空时处理
                 if (string.IsNullOrEmpty(policyValue))
                 {
                     if (valve.WhenNull == WhenNull.Pass)
@@ -107,19 +81,46 @@ namespace Dnc.Api.Throttle.Middlewares
                     }
                     else
                     {
-                        return false;
+                        return (false, valve);
                     }
                 }
 
-                //判断是否过载
-                long count = await _cache.GetValidApiRecordCount(Common.GlobalApiKey, valve.Policy, policyValue, DateTime.Now, valve.Duration);
-                if (count >= valve.Limit)
+                if (valve is BlackListValve)
                 {
-                    return false;
+                    //黑名单
+                    var wl = await _cache.GetRosterListAsync(RosterType.BlackList, Common.GlobalApiKey, valve.Policy, valve.PolicyKey);
+                    if (wl.Any(x => string.Equals(x.Value, policyValue)))
+                    {
+                        return (false, valve);
+                    }
+                }
+                else if (valve is WhiteListValve)
+                {
+                    //白名单
+                    var wl = await _cache.GetRosterListAsync(RosterType.WhiteList, Common.GlobalApiKey, valve.Policy, valve.PolicyKey);
+                    if (wl.Any(x => string.Equals(x.Value, policyValue)))
+                    {
+                        return (true, null);
+                    }
+                }
+                else if(valve is RateValve rateValve)
+                {
+                    //速率阀门
+                    if (rateValve.Duration <= 0 || rateValve.Limit <= 0)
+                    {
+                        //不限流
+                        continue;
+                    }
+                    //判断是否过载
+                    long count = await _cache.GetApiRecordCountAsync(Common.GlobalApiKey, rateValve.Policy, rateValve.PolicyKey, policyValue, DateTime.Now, rateValve.Duration);
+                    if (count >= rateValve.Limit)
+                    {
+                        return (false, valve);
+                    }
                 }
             }
 
-            return true;
+            return (true, null);
         }
 
         /// <summary>
@@ -128,16 +129,14 @@ namespace Dnc.Api.Throttle.Middlewares
         /// <returns></returns>
         private async Task SaveAsync(HttpContext context)
         {
-            DateTime nowTime = DateTime.Now;
-
             //循环保存记录
-            foreach (var valve in _options.Global.Valves)
+            foreach (RateValve valve in _options.Global.Valves.Where(x => x is RateValve))
             {
                 //取得识别值
                 var policyValue = context.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
 
                 //保存记录
-                await _cache.SaveApiRecordAsync(Common.GlobalApiKey, valve.Policy, policyValue, nowTime, valve.Duration);
+                await _cache.AddApiRecordAsync(Common.GlobalApiKey, valve.Policy, valve.PolicyKey, policyValue, nowTime, valve.Duration);
             }
         }
     }

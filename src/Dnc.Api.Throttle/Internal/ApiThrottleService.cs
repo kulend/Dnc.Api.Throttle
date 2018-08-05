@@ -20,20 +20,23 @@ namespace Dnc.Api.Throttle.Internal
         }
 
         #region 黑名单 & 白名单
-        
+
         /// <summary>
-        /// 添加黑名单
+        /// 添加名单
         /// </summary>
+        /// <param name="rosterType">名单类型</param>
         /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
         /// <param name="expiry">过期时间</param>
         /// <param name="item">项目</param>
-        public async Task AddBlackListAsync(Policy policy, TimeSpan? expiry, params string[] item)
+        /// <remarks>因为要保存过期时间，所以名单通过Redis 有序集合(sorted set)来存储，score来存储过期时间Ticks</remarks>
+        public async Task AddRosterAsync(RosterType rosterType, string api, Policy policy, string policyKey, TimeSpan? expiry, params string[] item)
         {
-            //保存黑名单
-            await _storage.SaveBlackListAsync(policy, expiry, item);
+            //保存名单
+            await _storage.AddRosterAsync(rosterType, api, policy, policyKey, expiry, item);
 
-            //从白名单中移除
-            await _storage.RemoveWhiteListAsync(policy, item);
+            //从反名单中移除
+            await _storage.RemoveRosterAsync(rosterType == RosterType.BlackList ? RosterType.WhiteList : RosterType.BlackList, api, policy, policyKey, item);
 
             //清除缓存
             await _cache.ClearBlackListCacheAsync(policy);
@@ -41,79 +44,40 @@ namespace Dnc.Api.Throttle.Internal
         }
 
         /// <summary>
-        /// 添加白名单
-        /// </summary>
-        /// <param name="expiry">过期时间</param>
-        /// <param name="item">项目</param>
-        public async Task AddWhiteListAsync(Policy policy, TimeSpan? expiry, params string[] item)
-        {
-            //保存白名单
-            await _storage.SaveWhiteListAsync(policy, expiry, item);
-
-            //从黑名单中移除
-            await _storage.RemoveBlackListAsync(policy, item);
-
-            //清除缓存
-            await _cache.ClearBlackListCacheAsync(policy);
-            await _cache.ClearWhiteListCacheAsync(policy);
-        }
-
-        /// <summary>
-        /// 移除黑名单
+        /// 移除名单
         /// </summary>
         /// <param name="policy">策略</param>
         /// <param name="item">项目</param>
-        public async Task RemoveBlackListAsync(Policy policy, params string[] item)
+        public async Task RemoveRosterAsync(RosterType rosterType, string api, Policy policy, string policyKey, params string[] item)
         {
-            //从黑名单中移除
-            await _storage.RemoveBlackListAsync(policy, item);
+            //从名单中移除
+            await _storage.RemoveRosterAsync(rosterType, api, policy, policyKey, item);
             //清除缓存
             await _cache.ClearBlackListCacheAsync(policy);
         }
 
         /// <summary>
-        /// 移除白名单
+        /// 取得名单列表（分页）
         /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="api">API</param>
         /// <param name="policy">策略</param>
-        /// <param name="item">项目</param>
-        public async Task RemoveWhiteListAsync(Policy policy, params string[] item)
+        /// <param name="policyKey">策略Key</param>
+        public async Task<(long count, IEnumerable<ListItem> items)> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey, long skip, long take)
         {
-            //从白名单中移除
-            await _storage.RemoveWhiteListAsync(policy, item);
-            //清除缓存
-            await _cache.ClearWhiteListCacheAsync(policy);
+            return await _storage.GetRosterListAsync(rosterType, api, policy, policyKey, skip, take);
         }
 
         /// <summary>
-        /// 取得黑名单列表（分页）
+        /// 取得名单列表
         /// </summary>
-        public async Task<(long count, IEnumerable<ListItem> items)> GetBlackListAsync(Policy policy, long skip, long take)
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="api">API</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        public async Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            return await _storage.GetBlackListAsync(policy, skip, take);
-        }
-
-        /// <summary>
-        /// 取得黑名单列表
-        /// </summary>
-        public async Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy)
-        {
-            return await _storage.GetBlackListAsync(policy);
-        }
-
-        /// <summary>
-        /// 取得白名单列表（分页）
-        /// </summary>
-        public async Task<(long count, IEnumerable<ListItem> items)> GetWhiteListAsync(Policy policy, long skip, long take)
-        {
-            return await _storage.GetWhiteListAsync(policy, skip, take);
-        }
-
-        /// <summary>
-        /// 取得白名单列表
-        /// </summary>
-        public async Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy)
-        {
-            return await _storage.GetWhiteListAsync(policy);
+            return await _storage.GetRosterListAsync(rosterType, api, policy, policyKey);
         }
 
         #endregion

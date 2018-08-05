@@ -30,30 +30,15 @@ namespace Dnc.Api.Throttle.Redis.Storage
         }
 
         /// <summary>
-        /// 保存黑名单
+        /// 添加名单
         /// </summary>
+        /// <param name="rosterType">名单类型</param>
         /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
         /// <param name="expiry">过期时间</param>
         /// <param name="item">项目</param>
         /// <remarks>因为要保存过期时间，所以名单通过Redis 有序集合(sorted set)来存储，score来存储过期时间Ticks</remarks>
-        public async Task SaveBlackListAsync(Policy policy, TimeSpan? expiry, params string[] item)
-        {
-            await SaveWhiteOrBlackListAsync("bl", policy, expiry, item);
-        }
-
-        /// <summary>
-        /// 保存白名单
-        /// </summary>
-        /// <param name="policy">策略</param>
-        /// <param name="expiry">过期时间</param>
-        /// <param name="item">项目</param>
-        /// <remarks>因为要保存过期时间，所以ip名单通过Redis 有序集合(sorted set)来存储，score来存储过期时间Ticks</remarks>
-        public async Task SaveWhiteListAsync(Policy policy, TimeSpan? expiry, params string[] item)
-        {
-            await SaveWhiteOrBlackListAsync("wl", policy, expiry, item);
-        }
-
-        private async Task SaveWhiteOrBlackListAsync(string listType, Policy policy, TimeSpan? expiry, params string[] item)
+        public async Task AddRosterAsync(RosterType rosterType, string api, Policy policy, string policyKey, TimeSpan? expiry, params string[] item)
         {
             if (item == null || item.Length == 0)
             {
@@ -61,14 +46,14 @@ namespace Dnc.Api.Throttle.Redis.Storage
             }
 
             //过期时间计算
-            double score = expiry == null ? DateTime.MaxValue.Ticks : DateTime.Now.Add(expiry.Value).Ticks;
+            double score = expiry == null ? double.PositiveInfinity : DateTime.Now.Add(expiry.Value).Ticks;
 
             SortedSetEntry[] values = new SortedSetEntry[item.Length];
             for (int i = 0; i < item.Length; i++)
             {
                 values[i] = new SortedSetEntry(item[i], score);
             }
-            string key = $"{_options.StorageKeyPrefix}:{listType}:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
             //保存
             await _db.SortedSetAddAsync(key, values);
 
@@ -77,47 +62,42 @@ namespace Dnc.Api.Throttle.Redis.Storage
         }
 
         /// <summary>
-        /// 删除黑名单中数据
+        /// 删除名单中数据
         /// </summary>
-        public async Task RemoveBlackListAsync(Policy policy, params string[] item)
-        {
-            await RemoveWhiteOrBlackListAsync("bl", policy, item);
-        }
-
-        /// <summary>
-        /// 删除白名单中数据
-        /// </summary>
-        public async Task RemoveWhiteListAsync(Policy policy, params string[] item)
-        {
-            await RemoveWhiteOrBlackListAsync("wl", policy, item);
-        }
-
-        private async Task RemoveWhiteOrBlackListAsync(string listType, Policy policy, params string[] item)
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="api">API</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        /// <param name="expiry">过期时间</param>
+        /// <param name="item">项目</param>
+        public async Task RemoveRosterAsync(RosterType rosterType, string api, Policy policy, string policyKey, params string[] item)
         {
             if (item == null || item.Length == 0)
             {
                 return;
             }
-
             //删除数据
             RedisValue[] delValues = new RedisValue[item.Length];
             for (int i = 0; i < item.Length; i++)
             {
                 delValues[i] = item[i];
             }
-
-            string key = $"{_options.StorageKeyPrefix}:{listType}:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
 
             //删除
             await _db.SortedSetRemoveAsync(key, delValues);
         }
 
         /// <summary>
-        /// 取得黑名单列表（分页）
+        /// 取得名单列表（分页）
         /// </summary>
-        public async Task<(long count, IEnumerable<ListItem> items)> GetBlackListAsync(Policy policy, long skip, long take)
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="api">API</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        public async Task<(long count, IEnumerable<ListItem> items)> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey, long skip, long take)
         {
-            string key = $"{_options.StorageKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
             //取得件数
             var count = await _db.SortedSetLengthAsync(key, DateTime.Now.Ticks, double.PositiveInfinity, Exclude.Both);
 
@@ -133,11 +113,15 @@ namespace Dnc.Api.Throttle.Redis.Storage
         }
 
         /// <summary>
-        /// 取得黑名单列表
+        /// 取得名单列表
         /// </summary>
-        public async Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy)
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="api">API</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        public async Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            string key = $"{_options.StorageKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
 
             //取得数据
             var data = await _db.SortedSetRangeByScoreWithScoresAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending);
@@ -145,37 +129,15 @@ namespace Dnc.Api.Throttle.Redis.Storage
             return data.Select(x => new ListItem { Value = (string)x.Element, ExpireTicks = x.Score });
         }
 
-        /// <summary>
-        /// 取得白名单列表（分页）
-        /// </summary>
-        public async Task<(long count, IEnumerable<ListItem> items)> GetWhiteListAsync(Policy policy, long skip, long take)
+        private string FromatRosterKey(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            string key = $"{_options.StorageKeyPrefix}:wl:{policy.ToString().ToLower()}";
-            //取得件数
-            var count = await _db.SortedSetLengthAsync(key, DateTime.Now.Ticks, double.PositiveInfinity, Exclude.Both);
-
-            if (count == 0)
+            var key = $"{_options.StorageKeyPrefix}:{rosterType.ToString().ToLower()}:{policy.ToString().ToLower()}";
+            if (!string.IsNullOrEmpty(policyKey))
             {
-                return (0, new List<ListItem>());
+                key += ":" + Common.EncryptMD5Short(policyKey);
             }
-
-            //取得数据
-            var data = await _db.SortedSetRangeByScoreWithScoresAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending, skip: skip, take: take);
-
-            return (count, data.Select(x => new ListItem { Value = (string)x.Element, ExpireTicks = x.Score }));
-        }
-
-        /// <summary>
-        /// 取得白名单列表
-        /// </summary>
-        public async Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy)
-        {
-            string key = $"{_options.StorageKeyPrefix}:wl:{policy.ToString().ToLower()}";
-
-            //取得数据
-            var data = await _db.SortedSetRangeByScoreWithScoresAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending);
-
-            return data.Select(x => new ListItem { Value = (string)x.Element, ExpireTicks = x.Score });
+            key += ":" + api.ToLower();
+            return key;
         }
     }
 

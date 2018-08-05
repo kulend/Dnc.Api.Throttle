@@ -24,100 +24,74 @@ namespace Dnc.Api.Throttle
 
         //Api名称
         private string _api = null;
-        private IEnumerable<ApiThrottleAttribute> _attrs;
+        private IEnumerable<RateValve> _valves;
 
         /// <summary>
         /// 处理接口
         /// </summary>
         /// <returns></returns>
-        private async Task<bool> HandleAsync(FilterContext context)
+        private async Task<(bool result, Valve valve)> HandleAsync(FilterContext context)
         {
             //预处理数据
             var method = context.GetHandlerMethod();
 
             _api = method.DeclaringType.FullName + "." + method.Name;
 
-            _attrs = method.GetCustomAttributes<ApiThrottleAttribute>(true);
+            _valves = method.GetCustomAttributes<RateValve>(true);
 
             //检查是否过载
-            var isValid =  await CheckAsync(context);
-            if (isValid)
+            var result =  await CheckAsync(context);
+            if (result.result)
             {
                 context.HttpContext.Request.Headers[Common.HeaderStatusKey] = "1";
                 //保存记录
                 await SaveAsync(context);
             }
+            else
+            {
+                context.HttpContext.Request.Headers[Common.HeaderStatusKey] = "0";
+            }
 
-            return isValid;
+            return result;
         }
 
         /// <summary>
         /// 检查过载
         /// </summary>
         /// <returns></returns>
-        private async Task<bool> CheckAsync(FilterContext context)
+        private async Task<(bool result, Valve valve)> CheckAsync(FilterContext context)
         {
-            ////黑名单检查
-            //foreach (Policy policy in Enum.GetValues(typeof(Policy)))
-            //{
-            //    if (policy == Policy.Header || policy == Policy.Query)
-            //    {
-            //        continue;
-            //    }
-            //    var bl = await _cache.GetBlackListAsync(policy);
-            //    //取得识别值
-            //    var policyValue = context.GetPolicyValue(_options, policy, null);
-            //    if (!string.IsNullOrEmpty(policyValue) && bl.Any(x => string.Equals(x.Value, policyValue)))
-            //    {
-            //        return false;
-            //    }
-            //}
-
-            ////白名单检查
-            //foreach (Policy policy in Enum.GetValues(typeof(Policy)))
-            //{
-            //    if (policy == Policy.Header || policy == Policy.Query)
-            //    {
-            //        continue;
-            //    }
-            //    var wl = await _cache.GetWhiteListAsync(policy);
-            //    //取得识别值
-            //    var policyValue = context.HttpContext.GetPolicyValue(_options, policy, null);
-            //    if (!string.IsNullOrEmpty(policyValue) && wl.Any(x => string.Equals(x.Value, policyValue)))
-            //    {
-            //        return true;
-            //    }
-            //}
-
             //循环验证是否过载
-            foreach (var attr in _attrs)
+            foreach (var valve in _valves)
             {
-                var isValid = await CheckItemAsync(context, attr);
-                if (!isValid)
+                if (valve.Duration <= 0 || valve.Limit <= 0)
                 {
-                    return false;
+                    //不限流
+                    continue;
+                }
+                //取得识别值
+                var policyValue = context.HttpContext.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
+                //识别值为空时处理
+                if (string.IsNullOrEmpty(policyValue))
+                {
+                    if (valve.WhenNull == WhenNull.Pass)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        return (false, valve);
+                    }
+                }
+                //判断是否过载
+                long count = await _cache.GetApiRecordCountAsync(_api, valve.Policy, valve.PolicyKey, policyValue, DateTime.Now, valve.Duration);
+                if (count >= valve.Limit)
+                {
+                    return (false, valve);
                 }
             }
 
-            return true;
-        }
-
-        private async Task<bool> CheckItemAsync(FilterContext context, ApiThrottleAttribute attr)
-        {
-            if (attr.Duration <= 0 || attr.Limit <= 0)
-            {
-                //不限流
-                return true;
-            }
-            //取得识别值
-            var policyValue = context.HttpContext.GetPolicyValue(_options, attr.Policy, attr.PolicyKey);
-            if (string.IsNullOrEmpty(policyValue))
-            {
-                return attr.WhenNull == WhenNull.Pass;
-            }
-            //判断是否过载
-            long count = await _cache.GetValidApiRecordCount(_api, attr.Policy, policyValue, DateTime.Now, attr.Duration);
-            return count < attr.Limit;
+            return (true, null);
         }
 
         /// <summary>
@@ -129,26 +103,26 @@ namespace Dnc.Api.Throttle
             DateTime nowTime = DateTime.Now;
 
             //循环保存记录
-            foreach (var attr in _attrs)
+            foreach (var valve in _valves)
             {
                 //取得识别值
-                var policyValue = context.HttpContext.GetPolicyValue(_options, attr.Policy, attr.PolicyKey);
+                var policyValue = context.HttpContext.GetPolicyValue(_options, valve.Policy, valve.PolicyKey);
 
                 //保存记录
-                await _cache.SaveApiRecordAsync(_api, attr.Policy, policyValue, nowTime, attr.Duration);
+                await _cache.AddApiRecordAsync(_api, valve.Policy, valve.PolicyKey, policyValue, nowTime, valve.Duration);
             }
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var result = await HandleAsync(context);
-            if (result)
+            if (result.result)
             {
                 await next();
             }
             else
             {
-                context.Result = _options.onIntercepted(context.HttpContext, IntercepteWhere.ActionFilter);
+                context.Result = _options.onIntercepted(context.HttpContext, result.valve, IntercepteWhere.ActionFilter);
             }
         }
 
@@ -160,14 +134,13 @@ namespace Dnc.Api.Throttle
         public async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
         {
             var result = await HandleAsync(context);
-            if (result)
+            if (result.result)
             {
                 await next();
             }
             else
             {
-
-                context.Result = _options.onIntercepted(context.HttpContext, IntercepteWhere.PageFilter);
+                context.Result = _options.onIntercepted(context.HttpContext, result.valve, IntercepteWhere.PageFilter);
             }
         }
     }

@@ -7,7 +7,8 @@ namespace Dnc.Api.Throttle
     /// <summary>
     /// 阀门
     /// </summary>
-    public class Valve
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public abstract class Valve : Attribute
     {
         /// <summary>
         /// 策略
@@ -27,6 +28,11 @@ namespace Dnc.Api.Throttle
         /// 当识别值为空时处理方式
         /// </summary>
         public WhenNull WhenNull { set; get; } = WhenNull.Pass;
+
+        /// <summary>
+        /// 优先级
+        /// </summary>
+        public int Priority { set; get; } = 0;
     }
 
     /// <summary>
@@ -49,7 +55,7 @@ namespace Dnc.Api.Throttle
     /// <summary>
     /// 名册阀门
     /// </summary>
-    public class RosterValve : Valve
+    public abstract class RosterValve : Valve
     {
        
     }

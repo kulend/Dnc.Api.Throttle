@@ -10,33 +10,22 @@ namespace Dnc.Api.Throttle
         /// <summary>
         /// 取得计时时间段api调用次数
         /// </summary>
-        Task<long> GetValidApiRecordCount(string apikey, Policy policy, string policyValue, DateTime now, int duration);
+        Task<long> GetApiRecordCountAsync(string api, Policy policy, string policyKey, string policyValue, DateTime now, int duration);
 
         /// <summary>
-        /// 保存调用记录
+        /// 新增调用记录
         /// </summary>
-        Task SaveApiRecordAsync(string apikey, Policy policy, string policyValue, DateTime now, int duration);
+        Task AddApiRecordAsync(string api, Policy policy, string policyKey, string policyValue, DateTime now, int duration);
 
         /// <summary>
-        /// 取得黑名单列表
+        /// 取得名单列表
         /// </summary>
-        Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy);
+        Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey);
 
         /// <summary>
-        /// 取得白名单列表
-        /// </summary>
-        Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy);
-
-        /// <summary>
-        /// 清除黑名单缓存
+        /// 清除名单列表缓存
         /// </summary>
         /// <returns></returns>
-        Task ClearBlackListCacheAsync(Policy policy);
-
-        /// <summary>
-        /// 清除白名单缓存
-        /// </summary>
-        /// <returns></returns>
-        Task ClearWhiteListCacheAsync(Policy policy);
+        Task ClearRosterListCacheAsync(RosterType rosterType, string api, Policy policy, string policyKey);
     }
 }

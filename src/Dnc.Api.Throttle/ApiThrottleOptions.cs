@@ -22,7 +22,7 @@ namespace Dnc.Api.Throttle
         /// </summary>
         public Func<HttpContext, string> OnIpAddress = context => context.GetIpAddress();
 
-        public Func<HttpContext, IntercepteWhere, IActionResult> onIntercepted = (context, where) => { return new ApiThrottleResult { Content = "访问过于频繁，请稍后重试！" }; };
+        public Func<HttpContext, Valve, IntercepteWhere, IActionResult> onIntercepted = (context, valve, where) => { return new ApiThrottleResult { Content = "访问过于频繁，请稍后重试！" }; };
 
         internal IList<IApiThrottleOptionsExtension> Extensions { get; } = new List<IApiThrottleOptionsExtension>();
 
@@ -50,24 +50,14 @@ namespace Dnc.Api.Throttle
     public class GlobalOptions
     {
         /// <summary>
-        /// 全局频率阀门
+        /// 全局阀门
         /// </summary>
-        public IList<RateValve> Valves { set; get; } = new List<RateValve>();
+        internal IList<Valve> Valves { set; get; } = new List<Valve>();
 
         /// <summary>
-        /// 全局黑名单阀门
+        /// 添加阀门
         /// </summary>
-        internal IList<BlackListValve> BlackListValves { set; get; } = new List<BlackListValve>();
-
-        /// <summary>
-        /// 全局白名单阀门
-        /// </summary>
-        internal IList<WhiteListValve> WhiteListValves { set; get; } = new List<WhiteListValve>();
-
-        /// <summary>
-        /// 添加 黑名单阀门
-        /// </summary>
-        public void AddBlackListValve(params BlackListValve[] valves)
+        public void AddValves(params Valve[] valves)
         {
             if (valves == null)
             {
@@ -79,54 +69,32 @@ namespace Dnc.Api.Throttle
                 {
                     continue;
                 }
-                if (valve.Policy == Policy.Ip || valve.Policy == Policy.UserIdentity)
+
+                if (valve is RosterValve roster)
                 {
-                    if (!BlackListValves.Any(x => x.Policy == valve.Policy))
+                    //名单阀门
+                    //判断是否重复添加阀门
+                    if (roster.Policy == Policy.Ip || roster.Policy == Policy.UserIdentity)
                     {
-                        BlackListValves.Add(valve);
+                        if (!Valves.Any(x => x.GetType() == roster.GetType() &&  x.Policy == roster.Policy))
+                        {
+                            Valves.Add(valve);
+                        }
+                    }
+                    else
+                    {
+                        if (!Valves.Any(x => x.GetType() == roster.GetType() && x.Policy == valve.Policy && string.Equals(x.PolicyKey, valve.PolicyKey)))
+                        {
+                            Valves.Add(valve);
+                        }
                     }
                 }
                 else
                 {
-                    if (!BlackListValves.Any(x => x.Policy == valve.Policy && string.Equals(x.PolicyKey, valve.PolicyKey)))
-                    {
-                        BlackListValves.Add(valve);
-                    }
+                    //速率阀门
+                    Valves.Add(valve);
                 }
             }
         }
-
-        /// <summary>
-        /// 添加 白名单阀门
-        /// </summary>
-        public void AddWhiteListValve(params WhiteListValve[] valves)
-        {
-            if (valves == null)
-            {
-                return;
-            }
-            foreach (var valve in valves)
-            {
-                if (valve == null)
-                {
-                    continue;
-                }
-                if (valve.Policy == Policy.Ip || valve.Policy == Policy.UserIdentity)
-                {
-                    if (!BlackListValves.Any(x => x.Policy == valve.Policy))
-                    {
-                        WhiteListValves.Add(valve);
-                    }
-                }
-                else
-                {
-                    if (!BlackListValves.Any(x => x.Policy == valve.Policy && string.Equals(x.PolicyKey, valve.PolicyKey)))
-                    {
-                        WhiteListValves.Add(valve);
-                    }
-                }
-            }
-        }
-
     }
 }

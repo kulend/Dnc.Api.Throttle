@@ -45,18 +45,18 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// <summary>
         /// 取得计时时间段api调用次数
         /// </summary>
-        public async Task<long> GetValidApiRecordCount(string api, Policy policy, string policyValue, DateTime now, int duration)
+        public async Task<long> GetApiRecordCountAsync(string api, Policy policy, string policyKey, string policyValue, DateTime now, int duration)
         {
-            var key = $"{_options.CacheKeyPrefix}:{api}:{policy.ToString().ToLower()}:{policyValue}";
+            var key = FromatApiRecordKey(api, policy, policyKey, policyValue);
             return await _db.SortedSetLengthAsync(key, now.Ticks - TimeSpan.FromSeconds(duration).Ticks, now.Ticks);
         }
 
         /// <summary>
         /// 保存调用记录
         /// </summary>
-        public async Task SaveApiRecordAsync(string api, Policy policy, string policyValue, DateTime now, int duration)
+        public async Task AddApiRecordAsync(string api, Policy policy, string policyKey, string policyValue, DateTime now, int duration)
         {
-            var key = $"{_options.CacheKeyPrefix}:{api}:{policy.ToString().ToLower()}:{policyValue}";
+            var key = FromatApiRecordKey(api, policy, policyKey, policyValue);
 
             await _db.SortedSetAddAsync(key, now.Ticks.ToString(), now.Ticks);
 
@@ -65,17 +65,11 @@ namespace Dnc.Api.Throttle.Redis.Cache
         }
 
         /// <summary>
-        /// 取得黑名单列表
+        /// 取得名单列表
         /// </summary>
-        public async Task<IEnumerable<ListItem>> GetBlackListAsync(Policy policy)
+        public async Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            ////如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
-            //if (_options.SameWithStorage)
-            //{
-            //    return await _storage.GetBlackListAsync(policy);
-            //}
-
-            var key = $"{_options.CacheKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
             //判断是否存在key
             if (await _db.KeyExistsAsync(key))
             {
@@ -85,7 +79,7 @@ namespace Dnc.Api.Throttle.Redis.Cache
             }
             else
             {
-                var data = (await _storage.GetBlackListAsync(policy)).ToList();
+                var data = (await _storage.GetRosterListAsync(rosterType, api, policy, policyKey)).ToList();
                 //Ip地址转换
                 if (policy == Policy.Ip)
                 {
@@ -105,71 +99,39 @@ namespace Dnc.Api.Throttle.Redis.Cache
         }
 
         /// <summary>
-        /// 取得白名单列表
-        /// </summary>
-        public async Task<IEnumerable<ListItem>> GetWhiteListAsync(Policy policy)
-        {
-            ////如果和Storage是同一个redis库，则直接从Storage取数据，不用缓存
-            //if (_options.SameWithStorage)
-            //{
-            //    return await _storage.GetWhiteListAsync(policy);
-            //}
-
-            var key = $"{_options.CacheKeyPrefix}:wl:{policy.ToString().ToLower()}";
-            //判断是否存在key
-            if (await _db.KeyExistsAsync(key))
-            {
-                //取得数据
-                var data = await _db.SortedSetRangeByScoreWithScoresAsync(key, start: DateTime.Now.Ticks, stop: double.PositiveInfinity, exclude: Exclude.Both, order: Order.Ascending);
-                return data.Select(x => new ListItem { Value = (string)x.Element, ExpireTicks = x.Score });
-            }
-            else
-            {
-                var data = await _storage.GetWhiteListAsync(policy);
-                //Ip地址转换
-                if (policy == Policy.Ip)
-                {
-                    foreach (var item in data)
-                    {
-                        item.Value = Common.IpToNum(item.Value); ;
-                    }
-                }
-                SortedSetEntry[] entrys = data.Select(x => new SortedSetEntry(x.Value, x.ExpireTicks)).ToArray();
-                //保存
-                await _db.SortedSetAddAsync(key, entrys);
-                //设置缓存过期时间
-                await _db.KeyExpireAsync(key, expiry);
-
-                return data;
-            }
-        }
-
-        /// <summary>
-        /// 清除黑名单缓存
+        /// 清除名单缓存
         /// </summary>
         /// <returns></returns>
-        public async Task ClearBlackListCacheAsync(Policy policy)
+        public async Task ClearRosterListCacheAsync(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            ////如果和Storage是相同的redis库，则不需要清缓存
-            //if (!_options.SameWithStorage)
-            //{
-            var key = $"{_options.CacheKeyPrefix}:bl:{policy.ToString().ToLower()}";
+            var key = FromatRosterKey(rosterType, api, policy, policyKey);
             await _db.KeyDeleteAsync(key);
-            //}
         }
 
-        /// <summary>
-        /// 清除白名单缓存
-        /// </summary>
-        /// <returns></returns>
-        public async Task ClearWhiteListCacheAsync(Policy policy)
+        private string FromatRosterKey(RosterType rosterType, string api, Policy policy, string policyKey)
         {
-            ////如果和Storage是相同的redis库，则不需要清缓存
-            //if (!_options.SameWithStorage)
-            //{
-            var key = $"{_options.CacheKeyPrefix}:wl:{policy.ToString().ToLower()}";
-            await _db.KeyDeleteAsync(key);
-            //}
+            var key = $"{_options.CacheKeyPrefix}:{rosterType.ToString().ToLower()}:{policy.ToString().ToLower()}";
+            if (!string.IsNullOrEmpty(policyKey))
+            {
+                key += ":" + Common.EncryptMD5Short(policyKey);
+            }
+            key += ":" + api.ToLower();
+            return key;
+        }
+
+        private string FromatApiRecordKey(string api, Policy policy, string policyKey, string policyValue)
+        {
+            var key = $"{_options.CacheKeyPrefix}:record:{policy.ToString().ToLower()}";
+            if (!string.IsNullOrEmpty(policyKey))
+            {
+                key += ":" + Common.EncryptMD5Short(policyKey);
+            }
+            if (!string.IsNullOrEmpty(policyValue))
+            {
+                key += ":" + Common.EncryptMD5Short(policyValue);
+            }
+            key += ":" + api.ToLower();
+            return key;
         }
     }
 }
