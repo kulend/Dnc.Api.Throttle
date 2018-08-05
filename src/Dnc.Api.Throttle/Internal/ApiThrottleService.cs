@@ -39,8 +39,8 @@ namespace Dnc.Api.Throttle.Internal
             await _storage.RemoveRosterAsync(rosterType == RosterType.BlackList ? RosterType.WhiteList : RosterType.BlackList, api, policy, policyKey, item);
 
             //清除缓存
-            await _cache.ClearBlackListCacheAsync(policy);
-            await _cache.ClearWhiteListCacheAsync(policy);
+            await _cache.ClearRosterListCacheAsync(rosterType, api, policy, policyKey);
+            await _cache.ClearRosterListCacheAsync(rosterType == RosterType.BlackList ? RosterType.WhiteList : RosterType.BlackList, api, policy, policyKey);
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Dnc.Api.Throttle.Internal
             //从名单中移除
             await _storage.RemoveRosterAsync(rosterType, api, policy, policyKey, item);
             //清除缓存
-            await _cache.ClearBlackListCacheAsync(policy);
+            await _cache.ClearRosterListCacheAsync(rosterType, api, policy, policyKey);
         }
 
         /// <summary>
