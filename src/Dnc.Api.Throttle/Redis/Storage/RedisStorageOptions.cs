@@ -11,7 +11,7 @@ namespace Dnc.Api.Throttle.Redis.Storage
         /// <summary>
         /// Redis Key Prefix
         /// </summary>
-        public string StorageKeyPrefix {
+        internal string StorageKeyPrefix {
             get 
             {
                 return  KeyPrefix + ":storage";

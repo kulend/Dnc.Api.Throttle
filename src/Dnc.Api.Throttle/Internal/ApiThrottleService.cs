@@ -44,6 +44,19 @@ namespace Dnc.Api.Throttle.Internal
         }
 
         /// <summary>
+        /// 添加全局名单
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        /// <param name="expiry">过期时间</param>
+        /// <param name="item">项目</param>
+        public async Task AddGlobalRosterAsync(RosterType rosterType, Policy policy, string policyKey, TimeSpan? expiry, params string[] item)
+        {
+            await AddRosterAsync(rosterType, Common.GlobalApiKey, policy, policyKey, expiry, item);
+        }
+
+        /// <summary>
         /// 移除名单
         /// </summary>
         /// <param name="policy">策略</param>
@@ -54,6 +67,16 @@ namespace Dnc.Api.Throttle.Internal
             await _storage.RemoveRosterAsync(rosterType, api, policy, policyKey, item);
             //清除缓存
             await _cache.ClearRosterListCacheAsync(rosterType, api, policy, policyKey);
+        }
+
+        /// <summary>
+        /// 移除全局名单
+        /// </summary>
+        /// <param name="policy">策略</param>
+        /// <param name="item">项目</param>
+        public async Task RemoveGlobalRosterAsync(RosterType rosterType, Policy policy, string policyKey, params string[] item)
+        {
+            await RemoveRosterAsync(rosterType, Common.GlobalApiKey, policy, policyKey, item);
         }
 
         /// <summary>
@@ -69,6 +92,17 @@ namespace Dnc.Api.Throttle.Internal
         }
 
         /// <summary>
+        /// 取得全局名单列表（分页）
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        public async Task<(long count, IEnumerable<ListItem> items)> GetGlobalRosterListAsync(RosterType rosterType, Policy policy, string policyKey, long skip, long take)
+        {
+            return await GetRosterListAsync(rosterType, Common.GlobalApiKey, policy, policyKey, skip, take);
+        }
+
+        /// <summary>
         /// 取得名单列表
         /// </summary>
         /// <param name="rosterType">名单类型</param>
@@ -78,6 +112,17 @@ namespace Dnc.Api.Throttle.Internal
         public async Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey)
         {
             return await _storage.GetRosterListAsync(rosterType, api, policy, policyKey);
+        }
+
+        /// <summary>
+        /// 取得全局名单列表
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        public async Task<IEnumerable<ListItem>> GetGlobalRosterListAsync(RosterType rosterType, Policy policy, string policyKey)
+        {
+            return await GetRosterListAsync(rosterType, Common.GlobalApiKey, policy, policyKey);
         }
 
         #endregion

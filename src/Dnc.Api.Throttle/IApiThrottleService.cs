@@ -13,11 +13,11 @@ namespace Dnc.Api.Throttle
         /// 添加名单
         /// </summary>
         /// <param name="rosterType">名单类型</param>
+        /// <param name="api">Api</param>
         /// <param name="policy">策略</param>
         /// <param name="policyKey">策略Key</param>
         /// <param name="expiry">过期时间</param>
         /// <param name="item">项目</param>
-        /// <remarks>因为要保存过期时间，所以名单通过Redis 有序集合(sorted set)来存储，score来存储过期时间Ticks</remarks>
         Task AddRosterAsync(RosterType rosterType, string api, Policy policy, string policyKey, TimeSpan? expiry, params string[] item);
 
         /// <summary>
@@ -48,6 +48,39 @@ namespace Dnc.Api.Throttle
         /// <param name="policy">策略</param>
         /// <param name="policyKey">策略Key</param>
         Task<IEnumerable<ListItem>> GetRosterListAsync(RosterType rosterType, string api, Policy policy, string policyKey);
+
+        /// <summary>
+        /// 添加全局名单
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        /// <param name="expiry">过期时间</param>
+        /// <param name="item">项目</param>
+        Task AddGlobalRosterAsync(RosterType rosterType, Policy policy, string policyKey, TimeSpan? expiry, params string[] item);
+
+        /// <summary>
+        /// 移除全局名单
+        /// </summary>
+        /// <param name="policy">策略</param>
+        /// <param name="item">项目</param>
+        Task RemoveGlobalRosterAsync(RosterType rosterType, Policy policy, string policyKey, params string[] item);
+
+        /// <summary>
+        /// 取得全局名单列表（分页）
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        Task<(long count, IEnumerable<ListItem> items)> GetGlobalRosterListAsync(RosterType rosterType, Policy policy, string policyKey, long skip, long take);
+
+        /// <summary>
+        /// 取得全局名单列表
+        /// </summary>
+        /// <param name="rosterType">名单类型</param>
+        /// <param name="policy">策略</param>
+        /// <param name="policyKey">策略Key</param>
+        Task<IEnumerable<ListItem>> GetGlobalRosterListAsync(RosterType rosterType, Policy policy, string policyKey);
 
         #endregion
     }

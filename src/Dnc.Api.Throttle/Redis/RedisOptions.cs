@@ -14,6 +14,6 @@ namespace Dnc.Api.Throttle.Redis
         /// <summary>
         /// Key前缀
         /// </summary>
-        public string KeyPrefix { set; get; } = "ApiThrottle";
+        public string KeyPrefix { set; get; } = "apithrottle";
     }
 }

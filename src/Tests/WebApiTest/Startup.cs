@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Dnc.Api.Throttle;
 using Microsoft.AspNetCore.Builder;
@@ -28,10 +29,35 @@ namespace WebApiTest
         {
             //Api限流
             services.AddApiThrottle(options => {
-                options.UseRedisCacheAndStorage(redisOption => {
-                    redisOption.ConnectionString = "localhost,connectTimeout=5000,allowAdmin=false,defaultDatabase=1";
+                //配置redis
+                //如果Cache和Storage使用同一个redis，则可以按如下配置
+                options.UseRedisCacheAndStorage(opts => {
+                    opts.ConnectionString = "localhost,connectTimeout=5000,allowAdmin=false,defaultDatabase=0";
+                    opts.KeyPrefix = "apithrottle"; //指定给所有key加上前缀，默认为apithrottle
                 });
-                //options.OnUserIdentity = httpContext => httpContext.User.GetUserIdOrZero().ToString();
+                //如果Cache和Storage使用不同redis库，可以按如下配置
+                //options.UseRedisCache(opts => {
+                //    opts.ConnectionString = "localhost,connectTimeout=5000,allowAdmin=false,defaultDatabase=0";
+                //});
+                //options.UseRedisStorage(opts => {
+                //    opts.ConnectionString = "localhost,connectTimeout=5000,allowAdmin=false,defaultDatabase=1";
+                //});
+
+                options.OnIpAddress = (context) => {
+                    var ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+                    if (string.IsNullOrEmpty(ip))
+                    {
+                        ip = context.Connection.RemoteIpAddress.ToString();
+                    }
+                    return ip;
+                };
+
+                options.OnUserIdentity = (httpContext) =>
+                {
+                    //这里根据自己需求返回用户唯一身份
+                    return httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                };
+
                 options.onIntercepted = (context, valve, where) =>
                 {
                     if (where == IntercepteWhere.Middleware)
@@ -45,8 +71,14 @@ namespace WebApiTest
                 };
                 options.Global.AddValves(new BlackListValve
                 {
-                    Policy = Policy.Ip
-                }, new BlackListValve
+                    Policy = Policy.Ip,
+                    Priority = 99
+                }, new WhiteListValve
+                {
+                    Policy = Policy.UserIdentity,
+                    Priority = 88
+                },
+                new BlackListValve
                 {
                     Policy = Policy.Header,
                     PolicyKey = "throttle"

@@ -11,7 +11,7 @@ namespace Dnc.Api.Throttle.Redis.Cache
         /// <summary>
         /// Redis Key Prefix
         /// </summary>
-        public string CacheKeyPrefix
+        internal string CacheKeyPrefix
         {
             get
             {
