@@ -160,7 +160,9 @@
                 ...
             });
     ```
-    以上代表给全局添加了4个Valve进行拦截，如果被拦截，则不进行后续操作，白名单检查通过时，代表全局拦截通过，不进行后续全局Valve检查（后续单独Api的检查还会进行）。
+    以上代表给全局添加了4个Valve进行拦截，如果被拦截，则不进行后续操作。
+    
+    白名单检查通过时，代表全局拦截通过，不进行后续全局Valve检查（后续单独Api的检查还会进行）。
 
     相同识别策略（Policy+PolicyKey）的Valve只能添加一个，重复不会添加。
 
@@ -233,7 +235,9 @@
         {
             var ip = GetIpAddress(HttpContext);
             //添加IP黑名单
-            await _service.AddRosterAsync(RosterType.BlackList, "WebApiTest.Controllers.ValuesController.AddBlackList", Policy.Ip, null, TimeSpan.FromSeconds(60), ip);
+            await _service.AddRosterAsync(RosterType.BlackList, 
+                "WebApiTest.Controllers.ValuesController.AddBlackList", 
+                Policy.Ip, null, TimeSpan.FromSeconds(60), ip);
         }
 
         /// <summary>
@@ -254,6 +258,7 @@
 
 现有接口：
     ```c#
+        
         #region 黑名单 & 白名单
 
         /// <summary>
@@ -331,3 +336,5 @@
 
         #endregion
     ```
+
+**如有bug或其他建议，可以提交issue。也可邮件给我：kulend@qq.com**
