@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Numerics;
 using System.Security.Claims;
-using System.Text;
 
 namespace Dnc.Api.Throttle.Extensions
 {
@@ -48,6 +44,23 @@ namespace Dnc.Api.Throttle.Extensions
             return context.Request.Query[key].FirstOrDefault();
         }
 
+        /// <summary>
+        /// 取得RequestPath
+        /// </summary>
+        internal static string GetRequestPath(this HttpContext context)
+        {
+            return context.Request.Path.Value;
+        }
+
+        /// <summary>
+        /// 取得Cookie值
+        /// </summary>
+        internal static string GetCookieValue(this HttpContext context, string key)
+        {
+            context.Request.Cookies.TryGetValue(key, out string value);
+            return value;
+        }
+
         internal static string GetPolicyValue(this HttpContext context, ApiThrottleOptions options, Policy policy, string policyKey)
         {
             switch (policy)
@@ -60,6 +73,10 @@ namespace Dnc.Api.Throttle.Extensions
                     return context.GetHeaderValue(policyKey);
                 case Policy.Query:
                     return context.GetQueryValue(policyKey);
+                case Policy.RequestPath:
+                    return context.GetRequestPath();
+                case Policy.Cookie:
+                    return context.GetCookieValue(policyKey);
                 default:
                     throw new ArgumentException("参数出错", "policy");
             }

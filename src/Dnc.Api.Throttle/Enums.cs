@@ -7,44 +7,54 @@ namespace Dnc.Api.Throttle
     /// <summary>
     /// 节流策略
     /// </summary>
-    /// <remarks>修改时请务必同步修改FilterContextExtension=>GetPolicyValue方法</remarks>
-    public enum Policy
+    /// <remarks>修改时请务必同步修改HttpContextExtension=>GetPolicyValue方法</remarks>
+    public enum Policy : short
     {
         /// <summary>
         /// IP地址
         /// </summary>
-        Ip,
+        Ip = 1,
 
         /// <summary>
         /// 用户身份
         /// </summary>
-        UserIdentity,
+        UserIdentity = 2,
 
         /// <summary>
         /// Request Header
         /// </summary>
-        Header,
+        Header = 3,
 
         /// <summary>
         /// Request Query
         /// </summary>
-        Query
+        Query = 4,
+
+        /// <summary>
+        /// 网址 Request path
+        /// </summary>
+        RequestPath = 5,
+
+        /// <summary>
+        /// Cookie
+        /// </summary>
+        Cookie = 6
     }
 
     /// <summary>
     /// 当识别值为空时处理方式
     /// </summary>
-    public enum WhenNull
+    public enum WhenNull : short
     {
         /// <summary>
         /// 通过
         /// </summary>
-        Pass,
+        Pass = 0,
 
         /// <summary>
         /// 拦截
         /// </summary>
-        Intercept
+        Intercept = 1
     }
 
     /// <summary>
@@ -59,10 +69,16 @@ namespace Dnc.Api.Throttle
         Middleware
     }
 
-    public enum RosterType
+    public enum RosterType : short
     {
-        BlackList,
+        /// <summary>
+        /// 黑名单
+        /// </summary>
+        BlackList = 1,
 
-        WhiteList
+        /// <summary>
+        /// 白名单
+        /// </summary>
+        WhiteList = 2
     }
 }
