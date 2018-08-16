@@ -61,6 +61,15 @@ namespace Dnc.Api.Throttle.Extensions
             return value;
         }
 
+        /// <summary>
+        /// 取得Form值
+        /// </summary>
+        internal static string GetFormValue(this HttpContext context, string key)
+        {
+            var value = context.Request.Form[key].FirstOrDefault();
+            return value;
+        }
+
         internal static string GetPolicyValue(this HttpContext context, ApiThrottleOptions options, Policy policy, string policyKey)
         {
             switch (policy)
@@ -77,6 +86,8 @@ namespace Dnc.Api.Throttle.Extensions
                     return context.GetRequestPath();
                 case Policy.Cookie:
                     return context.GetCookieValue(policyKey);
+                case Policy.Form:
+                    return context.GetFormValue(policyKey);
                 default:
                     throw new ArgumentException("参数出错", "policy");
             }

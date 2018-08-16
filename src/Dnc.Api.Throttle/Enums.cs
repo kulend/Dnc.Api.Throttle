@@ -38,7 +38,12 @@ namespace Dnc.Api.Throttle
         /// <summary>
         /// Cookie
         /// </summary>
-        Cookie = 6
+        Cookie = 6,
+
+        /// <summary>
+        /// Request Form
+        /// </summary>
+        Form = 7
     }
 
     /// <summary>
