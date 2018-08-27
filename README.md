@@ -9,6 +9,7 @@
 **使用Dnc.Api.Throttle可以使您轻松实现WebApi接口的限流管理。Dnc.Api.Throttle支持IP、用户身份、Request Header、Request QueryString等多种限流策略，支持黑名单和白名单功能，支持全局拦截和单独Api拦截。**
 
 **Dnc.Api.Throttle暂时只支持Redis作为缓存和存储库，后续会进行扩展。**
+**2018.08.27 由于并发性能问题，请暂时不要在全局限流中添加RateValve，后续会解决这个问题。**
 
 #### 开始使用
 
@@ -154,17 +155,11 @@
                 {
                     Policy = Policy.Header,
                     PolicyKey = "throttle"
-                }, new RateValve
-                {
-                    Policy = Policy.Ip,
-                    Limit = 5,
-                    Duration = 10,
-                    WhenNull = WhenNull.Pass
                 });
                 ...
             });
     ```
-    以上代表给全局添加了4个Valve进行拦截，如果被拦截，则不进行后续操作。
+    以上代表给全局添加了3个Valve进行拦截，如果被拦截，则不进行后续操作。
     
     白名单检查通过时，代表全局拦截通过，不进行后续全局Valve检查（后续单独Api的检查还会进行）。
 
