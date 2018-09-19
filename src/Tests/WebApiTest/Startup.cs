@@ -82,12 +82,6 @@ namespace WebApiTest
                 {
                     Policy = Policy.Header,
                     PolicyKey = "throttle"
-                }, new RateValve
-                {
-                    Policy = Policy.Ip,
-                    Limit = 5,
-                    Duration = 10,
-                    WhenNull = WhenNull.Pass
                 });
             });
 
