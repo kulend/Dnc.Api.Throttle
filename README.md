@@ -9,7 +9,9 @@
 **使用Dnc.Api.Throttle可以使您轻松实现WebApi接口的限流管理。Dnc.Api.Throttle支持IP、用户身份、Request Header、Request QueryString等多种限流策略，支持黑名单和白名单功能，支持全局拦截和单独Api拦截。**
 
 **Dnc.Api.Throttle暂时只支持Redis作为缓存和存储库，后续会进行扩展。**
-**2018.08.27 由于并发性能问题，请暂时不要在全局限流中添加RateValve，后续会解决这个问题。**
+
+**v1.2.0 由于并发性能问题，取消了在全局限流中添加RateValve的功能（黑白名单功能正常可用），后续会解决这个问题。**
+**v1.2.0 新添加了RequestPath、Cookie、Form限流策略**
 
 #### 开始使用
 
