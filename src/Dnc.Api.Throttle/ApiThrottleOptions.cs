@@ -55,9 +55,10 @@ namespace Dnc.Api.Throttle
         internal IList<Valve> Valves { set; get; } = new List<Valve>();
 
         /// <summary>
-        /// 添加阀门
+        /// 添加阀门(并发问题，暂时取消添加RateValve)
         /// </summary>
-        public void AddValves(params Valve[] valves)
+        //public void AddValves(params Valve[] valves)
+        public void AddValves(params RosterValve[] valves)
         {
             if (valves == null)
             {

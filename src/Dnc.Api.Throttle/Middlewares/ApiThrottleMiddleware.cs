@@ -49,12 +49,13 @@ namespace Dnc.Api.Throttle.Middlewares
 
                 await _next.Invoke(context);
 
-                var status = context.GetHeaderValue(Common.HeaderStatusKey);
-                if ("1".Equals(status))
-                {
-                    //保存
-                    await SaveAsync(context);
-                }
+                //因为考虑到性能问题，全局valve暂时去掉RateValve的添加
+                //var status = context.GetHeaderValue(Common.HeaderStatusKey);
+                //if ("1".Equals(status))
+                //{
+                //    //保存
+                //    await SaveAsync(context);
+                //}
             }
             else
             {
